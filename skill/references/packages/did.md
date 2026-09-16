@@ -1,5 +1,10 @@
 ## Package 'did'
 
+> **Historical reference snapshot.** The version recorded here belongs to this
+> snapshot and may differ from the installed package or validation ledger. Use
+> [installed help](did_quick_start.md#installed-help-topics) for current
+> arguments. This file remains available as a historical fallback.
+
 July 22, 2025
 Title Treatment Effects with Multiple Periods and Groups
 Version 2.1.2

@@ -1,11 +1,11 @@
 # bacondecomp: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `bacondecomp.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived implementation and testing notes, read `bacondecomp-additional.md`.
 
 ## Quick Workflow
@@ -20,14 +20,23 @@ Read this file first. It gives a short workflow and a complete function map, the
 - **Repo**: [evanjflack/bacondecomp](https://github.com/evanjflack/bacondecomp)
 - **Key files**: `R/bacon.R`, `R/data.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `bacon` | Goodman-Bacon decomposition of TWFE estimate into all 2x2 DiD comparisons | `bacondecomp.md:25` |
-| `castle` | Castle doctrine dataset (state-level homicide panel) | `bacondecomp.md:66` |
-| `A` | Abortion reform dataset (state-level panel) | `bacondecomp.md:77` |
-| `divorce` | Unilateral divorce dataset (state-level panel) | `bacondecomp.md:82` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R bacondecomp
+Rscript scripts/package-doc.R bacondecomp bacon
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [bacondecomp.md](bacondecomp.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 
@@ -76,5 +85,5 @@ ggplot(df_bacon) +
 ## Reading Strategy
 
 - Start with `bacon` usage here.
-- Open `bacondecomp.md` for full argument details.
+- Use installed help for current arguments; `bacondecomp.md` preserves the historical snapshot.
 - Use repo tests to verify decomposition behavior in edge cases.

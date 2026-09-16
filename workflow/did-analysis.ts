@@ -3,8 +3,8 @@
 //
 // It is the orchestration counterpart to the repo's `skill/` (the 5-step DiD method
 // guides + R recipes) and `mcp/` (the did_* tool server). The workflow:
-//   1. scans CRAN + GitHub for package updates and diffs upstream docs against the
-//      repo's skill/references/packages/*.md (report-only);
+//   1. reports the installed R environment against the observed API baseline and
+//      last-validated versions (offline, report-only);
 //   2. runs the 5-step Roth et al. procedure, with EACH step gated by three independent
 //      reviewers — statistical, economic, and artifact-QA — looping until none has an
 //      open blocking issue;
@@ -38,15 +38,21 @@
 // the did_* MCP tools are registered they are preferred; otherwise agents run the R
 // recipes documented in skill/references/did-step-*.md via Rscript.
 
+// ## Contents
+// - [Configuration](#configuration)
+// - [Contracts](#contracts)
+// - [Execution](#execution)
+
+// ## Configuration
 export const meta = {
   name: 'did-analysis',
   description:
-    'Run a complete, reviewed Difference-in-Differences analysis on a panel dataset: scan CRAN/GitHub for package updates (diffing upstream docs against the skill package docs, report-only), then execute the 5-step Roth et al. procedure (treatment structure, TWFE diagnostics, robust estimation, pre-trends power, HonestDiD sensitivity) where EVERY step is gated by three independent reviewers — statistical, economic, and artifact-QA — looping until no blocking issue remains; audit all artifacts for cross-consistency; and write an audience-tailored report that a correctness reviewer and an audience-fit reviewer sign off on.',
+    'Run a complete, reviewed Difference-in-Differences analysis on a panel dataset: inspect installed package provenance against the last-validated environment (offline, report-only), then execute the 5-step Roth et al. procedure (treatment structure, TWFE diagnostics, robust estimation, pre-trends power, HonestDiD sensitivity) where EVERY step is gated by three independent reviewers — statistical, economic, and artifact-QA — looping until no blocking issue remains; audit all artifacts for cross-consistency; and write an audience-tailored report that a correctness reviewer and an audience-fit reviewer sign off on.',
   whenToUse:
     'When the user has a panel dataset (state-year, firm-quarter, etc.) with a treatment-timing variable and wants a credible, end-to-end DiD analysis with built-in statistical + economic review at each step, integrity-checked CSV/figure/table outputs, and a written report for a chosen audience.',
   phases: [
     { title: 'Preflight',          detail: 'Check Rscript + P0 packages, dataset readability, MCP-vs-R path' },
-    { title: 'Packages',           detail: 'Per-package CRAN/GitHub version + doc-diff vs skill docs (report-only, parallel)' },
+    { title: 'Packages',           detail: 'Installed versions + source revisions vs recorded environment (offline, report-only)' },
     { title: 'Configure',          detail: 'Resolve dataset, infer/validate column mapping, mint the run directory' },
     { title: 'Step 1 Structure',   detail: 'Panel integrity + design profile → route; gated by stat/econ/QA reviewers' },
     { title: 'Step 2 Diagnostics', detail: 'Bacon decomposition + negative weights → severity (STAGGERED only)' },
@@ -110,26 +116,33 @@ const audiences = (Array.isArray(a.audience) ? a.audience : [a.audience ?? 'econ
   .filter((x) => SUPPORTED_AUDIENCES.includes(x))
 const audienceList = [...new Set(audiences.length ? audiences : ['economists'])]
 
-// DiD R packages tracked by the repo (from mcp/r/install_packages.R + skill/references/package-versions.md).
+// BEGIN GENERATED PACKAGE INVENTORY
+// Source: skill/references/package-registry.json; run node scripts/package-maintenance.mjs sync.
 const PACKAGES = [
-  { name: 'did',              source: 'cran' },
-  { name: 'fixest',           source: 'cran' },
-  { name: 'did2s',            source: 'cran' },
-  { name: 'didimputation',    source: 'cran' },
-  { name: 'staggered',        source: 'cran' },
-  { name: 'bacondecomp',      source: 'cran' },
-  { name: 'TwoWayFEWeights',  source: 'cran' },
-  { name: 'HonestDiD',        source: 'cran' },
-  { name: 'pretrends',        source: 'github', repo: 'jonathandroth/pretrends' },
-  { name: 'DRDID',            source: 'cran' },
-  { name: 'panelView',        source: 'cran' },
-  { name: 'etwfe',            source: 'cran' },
-  { name: 'DIDmultiplegt',    source: 'cran' },
-  { name: 'DIDmultiplegtDYN', source: 'cran' },
-  { name: 'gsynth',           source: 'cran' },
-  { name: 'synthdid',         source: 'github', repo: 'synth-inference/synthdid' },
-  { name: 'YatchewTest',      source: 'cran' },
+  {"name":"did","priority":"P0","install":"required","source":"cran","repo":"bcallaway11/did"},
+  {"name":"fixest","priority":"P0","install":"required","source":"cran","repo":"lrberge/fixest"},
+  {"name":"did2s","priority":"P0","install":"required","source":"cran","repo":"kylebutts/did2s"},
+  {"name":"didimputation","priority":"P0","install":"required","source":"cran","repo":"kylebutts/didimputation"},
+  {"name":"staggered","priority":"P0","install":"required","source":"cran","repo":"jonathandroth/staggered"},
+  {"name":"bacondecomp","priority":"P0","install":"required","source":"cran"},
+  {"name":"TwoWayFEWeights","priority":"P0","install":"required","source":"cran"},
+  {"name":"HonestDiD","priority":"P0","install":"required","source":"cran","repo":"asheshrambachan/HonestDiD"},
+  {"name":"pretrends","priority":"P0","install":"required","source":"github","repo":"jonathandroth/pretrends"},
+  {"name":"panelView","priority":"P0","install":"required","source":"cran"},
+  {"name":"DRDID","priority":"P1","install":"optional","source":"cran"},
+  {"name":"etwfe","priority":"P1","install":"optional","source":"cran"},
+  {"name":"DIDmultiplegt","priority":"P1","install":"optional","source":"cran"},
+  {"name":"DIDmultiplegtDYN","priority":"P1","install":"optional","source":"cran"},
+  {"name":"gsynth","priority":"P1","install":"optional","source":"cran"},
+  {"name":"synthdid","priority":"P1","install":"optional","source":"github","repo":"synth-inference/synthdid"},
+  {"name":"YatchewTest","priority":"P2","install":"manual","source":"cran"},
+  {"name":"jsonlite","priority":null,"install":"required","source":"cran"},
+  {"name":"data.table","priority":null,"install":"required","source":"cran"},
+  {"name":"ggplot2","priority":null,"install":"required","source":"cran"},
+  {"name":"arrow","priority":null,"install":"manual","source":"cran"},
+  {"name":"polars","priority":null,"install":"manual","source":"r-universe"},
 ]
+// END GENERATED PACKAGE INVENTORY
 
 // Repo locations agents read recipes / package docs from. The workflow is part of the repo,
 // so these resolve relative to the working tree; agents resolve them with Glob/Read if the
@@ -165,7 +178,7 @@ Hard rules:
 - NEVER fabricate data, results, figures, or numbers. If something cannot be computed, say so plainly.
 - 'gvar' is the treatment-TIMING (cohort) variable — the period a unit is first treated — NOT a 0/1
   indicator. Never-treated units are recoded PER ESTIMATOR: Callaway-Sant'Anna (did)=0; Sun-Abraham
-  (fixest sunab) and staggered=Inf; BJS (didimputation)=max(time)+10 and requires a BALANCED panel;
+  (fixest sunab) and staggered=Inf; BJS (didimputation)=0 and requires a BALANCED panel;
   Gardner (did2s) builds an explicit 0/1 'treat' from gvar.
 - Sampling weights: ${weightsVar ? `the weights column is "${weightsVar}" — pass it to estimators that accept weights (e.g. did::att_gt(weightsname="${weightsVar}"), feols(weights=~${weightsVar}), DRDID) and report the weighted estimate; note any estimator that cannot use it.` : 'no weights column was supplied — run unweighted and say so.'}
 - Cross-stage state lives ONLY in files under the run directory and in the JSON you return. Earlier
@@ -224,7 +237,7 @@ const PREFLIGHT_SCHEMA = {
     rOk:         { type: 'boolean' },
     rscriptPath: { type: 'string' },
     rVersion:    { type: 'string' },
-    packagesMissing: { type: 'array', items: { type: 'string' }, description: 'P0 packages that failed to load.' },
+    packagesMissing: { type: 'array', items: { type: 'string' }, description: 'Required packages that are absent or failed a load check; metadata alone does not check loadability.' },
     datasetOk:   { type: 'boolean' },
     columns:     { type: 'array', items: { type: 'string' }, description: 'Detected columns in the dataset.' },
     blockers:    { type: 'array', items: { type: 'string' } },
@@ -232,42 +245,19 @@ const PREFLIGHT_SCHEMA = {
   },
 }
 
-const PKG_CHECK_SCHEMA = {
-  type: 'object',
-  required: ['package', 'updateAvailable', 'docDrift', 'summary'],
-  properties: {
-    package:       { type: 'string' },
-    installed:     { type: 'string', description: 'Locally installed version, or "(not installed)".' },
-    pinned:        { type: 'string', description: 'Version recorded in skill/references/package-versions.md.' },
-    latestCran:    { type: 'string' },
-    latestGithub:  { type: 'string' },
-    updateAvailable: { type: 'boolean' },
-    severity:      { type: 'string', enum: ['none', 'patch', 'minor', 'major'] },
-    notesUrl:      { type: 'string', description: 'CRAN NEWS / GitHub releases URL.' },
-    docDiff: {
-      type: 'object',
-      properties: {
-        functionsAdded:   { type: 'array', items: { type: 'string' } },
-        functionsRemoved: { type: 'array', items: { type: 'string' } },
-        functionsRenamed: { type: 'array', items: { type: 'string' } },
-        signatureChanges: { type: 'array', items: { type: 'string' } },
-        behaviorNotes:    { type: 'array', items: { type: 'string' } },
-        newsHighlights:   { type: 'array', items: { type: 'string' } },
-      },
-    },
-    docDrift:        { type: 'boolean', description: 'True if the repo md docs differ from upstream in a way worth refreshing.' },
-    mdFilesToUpdate: { type: 'array', items: { type: 'string' }, description: 'Which skill/references/packages/<pkg>*.md files drift.' },
-    summary:       { type: 'string' },
-  },
-}
 const PKG_SUMMARY_SCHEMA = {
   type: 'object',
-  required: ['updatesAvailable', 'docsDrifting', 'markdown'],
+  required: ['environmentChanges', 'checks', 'markdown'],
   properties: {
-    updatesAvailable: { type: 'integer' },
-    docsDrifting:     { type: 'integer' },
+    environmentChanges: { type: 'integer' },
+    checks: { type: 'array', items: { type: 'object', required: ['package', 'installed', 'status'], properties: {
+      package: { type: 'string' }, installed: { type: 'string', description: 'Observed version, missing, or unknown.' },
+      validatedVersion: { type: 'string' }, remoteSha: { type: 'string' },
+      status: { type: 'string', enum: ['matches', 'changed', 'missing', 'unknown'] },
+      notes: { type: 'string' },
+    } } },
     headline:         { type: 'string' },
-    markdown:         { type: 'string', description: 'The full packages-report.md body (a table + per-package notes).' },
+    markdown:         { type: 'string', description: 'Offline package provenance report; never claim an upstream release was checked.' },
   },
 }
 
@@ -293,6 +283,7 @@ const CONFIG_SCHEMA = {
   },
 }
 
+// ## Contracts
 const EVENT_STUDY = {
   type: 'object',
   required: ['betahat', 'tVec', 'sigmaIsDiagonalFallback'],
@@ -306,7 +297,7 @@ const EVENT_STUDY = {
         dim:    { type: 'array', items: { type: 'integer' }, description: '[nrow, ncol].' },
       },
     },
-    sigmaIsDiagonalFallback: { type: 'boolean', description: 'True unless a true matched VCOV was extracted (only Sun-Abraham yields one).' },
+    sigmaIsDiagonalFallback: { type: 'boolean', description: 'True unless a full matched VCOV was extracted (Sun-Abraham and did2s preserve it).' },
   },
 }
 const ESTIMATE_SCHEMA = {
@@ -473,7 +464,7 @@ const runReviewedStep = async ({ title, label, guide, runDir, execSchema, execPr
 }
 
 // =====================================================================================
-// BODY
+// ## Execution
 // =====================================================================================
 
 // ---- 1. Preflight -------------------------------------------------------------------
@@ -481,7 +472,7 @@ phase('Preflight')
 const preflight = await agent(
   `${SHARED}\n\nPreflight the environment using read-only Bash. Do NOT install anything or modify files.\n` +
   `1. Confirm Rscript is on PATH (capture its path + version), OR detect that the did_* MCP tools are registered.\n` +
-  `2. Probe that the P0 packages load: did, fixest, did2s, didimputation, staggered, bacondecomp, TwoWayFEWeights, HonestDiD, pretrends, DRDID, panelView (use Rscript -e 'requireNamespace(...)'); list any that fail.\n` +
+  `2. Probe the registry-required packages: ${PACKAGES.filter(p => p.install === 'required').map(p => p.name).join(', ')} (use Rscript -e 'requireNamespace(...)' with options(rgl.useNULL=TRUE); for MCP use did_ping bridge.package_provenance and state that metadata confirms installation, not namespace loadability); list any that fail. Optional packages should be checked only if the chosen method needs them.\n` +
   `3. Confirm the dataset ${dataPath ?? '(path not supplied — note this; Configure will locate it)'} is readable and list its columns + row count.\n` +
   `4. Decide the execution path: "mcp" only if did_* tools are actually available, else "rfallback". (Requested: ${pathMode}.)\n` +
   `Set runnable=false (with blockers) if R is missing AND MCP is unavailable, or if no dataset can be read. If a P0 package is missing, note that the user should run Rscript mcp/r/install_packages.R — do NOT install it yourself. Return JSON.`,
@@ -494,37 +485,23 @@ if (!preflight.runnable) {
 const execPath = pathMode === 'mcp' || pathMode === 'rfallback' ? pathMode : preflight.path
 log(`Preflight OK — execution path: ${execPath}; missing P0 packages: ${(preflight.packagesMissing ?? []).join(', ') || 'none'}.`)
 
-// ---- 2. Packages (report-only) ------------------------------------------------------
+// ---- 2. Packages (offline, report-only) ---------------------------------------------
 let pkgSummary = null
 let pkgChecks = []
 if (!skipPackageCheck) {
   phase('Packages')
-  log(`Scanning ${PACKAGES.length} packages for CRAN/GitHub updates and doc drift...`)
-  pkgChecks = (await parallel(
-    PACKAGES.map((p) => () =>
-      agent(
-        `${SHARED}\n\nYou are checking ONE R package for updates and documentation drift. Report only — do NOT edit files or install anything.\n\n` +
-        `Package: ${p.name} (source: ${p.source}${p.repo ? `, repo ${p.repo}` : ''}).\n` +
-        `1. Find the locally installed version: Rscript -e 'cat(as.character(packageVersion("${p.name}")))' (it may not be installed).\n` +
-        `2. Find the pinned version recorded in ${SKILL}/references/package-versions.md (Read it).\n` +
-        `3. Find the latest version upstream: for CRAN, WebFetch https://cran.r-project.org/package=${p.name} (and its NEWS); ` +
-        `for GitHub${p.repo ? ` (${p.repo})` : ''}, WebFetch the repo's releases/DESCRIPTION/NEWS.\n` +
-        `4. Read the repo's docs for this package: ${SKILL}/references/packages/${p.name}.md, ${p.name}_quick_start.md, ${p.name}-additional.md. ` +
-        `Diff the upstream function map / signatures / NEWS against them and record exactly what changed (functions added/removed/renamed, signature changes, behavior/NEWS notes) and which md files drift.\n` +
-        `Return JSON; set updateAvailable and docDrift accurately. Be precise, not speculative — if you cannot fetch upstream, say so in summary and leave latest* empty.`,
-        { label: `pkg:${p.name}`, phase: 'Packages', schema: PKG_CHECK_SCHEMA },
-      ),
-    ),
-  )).filter(Boolean)
-
+  log('Inspecting the installed R environment (offline)...')
   pkgSummary = await agent(
-    `${SHARED}\n\nYou are the package-scan summarizer. Here are the per-package results:\n${brief(pkgChecks)}\n\n` +
-    `Write packages-report.md: a Markdown table (package | installed | pinned | latest CRAN/GitHub | update? | severity | docs drift?) followed by a short per-package note ONLY for packages with an available update or doc drift, naming exactly what changed and which ${SKILL}/references/packages/<pkg>*.md files would need refreshing. This is report-only — recommend, do not apply. Return JSON.`,
-    { label: 'pkg:summary', phase: 'Packages', schema: PKG_SUMMARY_SCHEMA },
+    `${SHARED}\n\nInspect package provenance once, locally. Do not browse upstream, install packages, rewrite a baseline, or read entire package manuals.\n` +
+    `Selected execution path: ${execPath}. For MCP, call did_ping and use bridge.package_provenance from the server's actual R environment. For rfallback, run the preflight Rscript (${preflight.rscriptPath || 'Rscript'}) with ${SKILL}/scripts/package-status.R; resolve the installed skill location if needed.\n` +
+    `Compare observations with ${SKILL}/references/package-versions.md (last validated, NOT pinned) and ${SKILL}/references/package-api-baseline.json (observed API baseline, NOT a validation certificate). Missing optional/manual packages are informational. Missing required packages or changed versions need explicit notes. A matching version is not a full compatibility test.\n` +
+    `Return checks and a packages-report.md table with package, installed version, last-validated version, source SHA and status; count changed installed versions/revisions in environmentChanges. Use unknown if inspection is unavailable. Say upstream releases were not checked. For a needed argument, use ${SKILL}/scripts/package-doc.R PACKAGE TOPIC in the same R environment.`,
+    { label: 'pkg:environment', phase: 'Packages', schema: PKG_SUMMARY_SCHEMA },
   )
-  log(`Package scan: ${pkgSummary.updatesAvailable} update(s) available, ${pkgSummary.docsDrifting} package doc(s) drifting.`)
+  pkgChecks = pkgSummary.checks ?? []
+  log(`Package environment: ${pkgSummary.environmentChanges} observed change(s).`)
 } else {
-  log('Skipping package-update scan (skipPackageCheck=true).')
+  log('Skipping package environment report (skipPackageCheck=true).')
 }
 
 // ---- 3. Configure -------------------------------------------------------------------
@@ -626,8 +603,8 @@ if (proceed) {
     selected.map((est) => () =>
       agent(
         `${SHARED}\n\n${cfgContext}\n\nSTEP 3 — estimate with the "${est}" estimator. Follow ${STEP_GUIDE.estimation} (use that estimator's recipe exactly).\n` +
-        `Apply the correct never-treated recoding for THIS estimator (cs=0; sa/staggered=Inf; bjs=max(time)+10 and REQUIRES a balanced panel — if isBalanced is false, set ran=false with that reason; did2s builds an explicit 0/1 treat from gvar). Cluster at ${config.clusterVar || config.idVar}.\n` +
-        `Produce: the overall ATT (with SE + 95% CI) and the event-study coefficients. Extract the {betahat, tVec, sigma} triple — for sa use HonestDiD:::sunab_beta_vcv() to get a true matched VCOV (sigmaIsDiagonalFallback=false); for others build sigma = diag(se^2) after filtering finite positive SEs (sigmaIsDiagonalFallback=true). Save the event-study coefficients CSV to ${runDir}/tables/event_study_${est}.csv and an event-study plot to ${runDir}/figures/event_study_${est}.png.\n` +
+        `Apply the correct never-treated recoding for THIS estimator (cs=0; sa/staggered=Inf; bjs=0 and REQUIRES a balanced panel — if isBalanced is false, set ran=false with that reason; did2s builds an explicit 0/1 treat from gvar). Cluster at ${config.clusterVar || config.idVar}.\n` +
+        `Produce: the overall ATT (with SE + 95% CI) and the event-study coefficients. Extract the {betahat, tVec, sigma} triple — for sa use HonestDiD:::sunab_beta_vcv() to get a true matched VCOV (sigmaIsDiagonalFallback=false); for did2s extract the full vcov(model), match rows and columns to event-study coefficient names, sort/trim coefficients and both covariance axes together, and set sigmaIsDiagonalFallback=false; fail explicitly on missing/duplicate names or invalid covariance; for cs, bjs, and staggered build sigma = diag(se^2) after filtering finite positive SEs (sigmaIsDiagonalFallback=true). Save the event-study coefficients CSV to ${runDir}/tables/event_study_${est}.csv and an event-study plot to ${runDir}/figures/event_study_${est}.png.\n` +
         `Return JSON for this single estimator (set ran=false + error if it cannot run). Do NOT fabricate numbers.`,
         { label: `estimate:${est}`, phase: 'Step 3 Estimation', schema: ESTIMATE_SCHEMA },
       ),
@@ -726,6 +703,7 @@ if (proceed) {
 // ---- 10/11. Report + Report Review (per audience) -----------------------------------
 const analysisContext =
   `${cfgContext}\n\nStep results (summaries; full artifacts are under ${runDir}):\n` +
+  `- package environment: ${pkgSummary ? brief({ environmentChanges: pkgSummary.environmentChanges, upstreamChecked: false, checks: pkgChecks }) : 'inspection skipped'}\n` +
   `- structure: ${brief({ route, isBalanced: steps.structure?.isBalanced, cohorts: steps.structure?.cohorts, summary: steps.structure?.summary })}\n` +
   (steps.diagnostics ? `- diagnostics: ${brief({ severity: steps.diagnostics.severity, forbiddenWeightPct: steps.diagnostics.forbiddenWeightPct, negWeightPct: steps.diagnostics.negWeightPct })}\n` : '- diagnostics: (skipped — canonical or advanced)\n') +
   (steps.estimation ? `- estimation: ${brief({ primary: steps.estimation.primaryEstimator, agree: steps.estimation.agree, cv: steps.estimation.cv, table: steps.estimation.comparisonTable })}\n` : '') +
@@ -755,7 +733,7 @@ for (const audience of audienceList) {
   let draft = await agent(
     `${SHARED}\n\n${analysisContext}\n\nWrite the overall DiD analysis report for a ${audience.toUpperCase()} audience.\n` +
     `Audience profile: ${AUDIENCE_PROFILE[audience]}\n` +
-    `Structure (following ${SKILL}/paper.md): Data & design → package status (1-2 lines from the scan) → TWFE diagnostics → estimation & comparison → pre-trends & power → sensitivity → VERDICT & caveats. Reference the figures/tables in ${runDir} by path. Use ONLY numbers present in the step results/artifacts — never invent.\n` +
+    `Structure (following ${SKILL}/paper.md): Data & design → package status (1-2 lines from the local environment report) → TWFE diagnostics → estimation & comparison → pre-trends & power → sensitivity → VERDICT & caveats. Reference the figures/tables in ${runDir} by path. Use ONLY numbers present in the step results/artifacts — never invent.\n` +
     `Compute the evidence VERDICT from five booleans — attSig (primary ATT significant), powered (bias ratio < 1), pretestPass (pre-trends p > 0.05), robust (breakdown M >= 1 or None), estimatorsAgree (cv < 0.2) — and map to one of: STRONG EVIDENCE | MIXED | FRAGILE | SUGGESTIVE | EVIDENCE OF NULL | UNINFORMATIVE | INCONCLUSIVE (see final_evidence_assessment in ${STEP_GUIDE.sensitivity}). Return JSON.`,
     { label: `report${variantSuffix}`, phase: 'Report', schema: REPORT_SCHEMA },
   )
@@ -809,7 +787,7 @@ const implementation = {
   executionPath: execPath,
   config,
   route,
-  packageScan: pkgSummary ? { updatesAvailable: pkgSummary.updatesAvailable, docsDrifting: pkgSummary.docsDrifting, checks: pkgChecks } : null,
+  packageScan: pkgSummary ? { environmentChanges: pkgSummary.environmentChanges, upstreamChecked: false, checks: pkgChecks } : null,
   structure: steps.structure ?? null,
   diagnostics: steps.diagnostics ?? null,
   estimation: steps.estimation ?? null,
@@ -867,7 +845,7 @@ return {
   breakdownM: steps.sensitivity?.breakdownM ?? null,
   verdicts: Object.fromEntries(Object.entries(reportVariants).map(([aud, v]) => [aud, v.verdict])),
   audiences: audienceList,
-  packageScan: pkgSummary ? { updatesAvailable: pkgSummary.updatesAvailable, docsDrifting: pkgSummary.docsDrifting } : 'skipped',
+  packageScan: pkgSummary ? { environmentChanges: pkgSummary.environmentChanges, upstreamChecked: false } : 'skipped',
   artifactAuditConsistent: steps._audit?.allConsistent ?? null,
   files: fileList.map(([f]) => `${runDir}/${f}`),
 }

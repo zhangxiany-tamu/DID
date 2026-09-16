@@ -1,20 +1,21 @@
 # HonestDiD: Quick Start
 
 ## Contents
+
 - [How To Use This File](#how-to-use-this-file)
 - [Quick Workflow](#quick-workflow)
 - [Repository Highlights (From Additional Notes)](#repository-highlights-from-additional-notes)
 - [Layer 5 Source (GitHub)](#layer-5-source-github)
-- [Complete Function Map](#complete-function-map)
+- [Installed Help Topics](#installed-help-topics)
 - [Common Use Case Example](#common-use-case-example)
 - [Reading Strategy](#reading-strategy)
 
-Read this file first. It gives the fast workflow, then a complete function index with pointers into the full manual.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `HonestDiD.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived implementation tips and caveats, read `HonestDiD-additional.md`.
 
 ## Quick Workflow
@@ -35,31 +36,23 @@ Read this file first. It gives the fast workflow, then a complete function index
 - **Repo**: [asheshrambachan/HonestDiD](https://github.com/asheshrambachan/HonestDiD)
 - **Key files**: `R/sensitivityresults.R`, `R/honest_sunab.R` (sunab_beta_vcv), `R/honest_did.R`, `R/flci.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `basisVector` | Creates a standard basis vector. | `HonestDiD.md:61` |
-| `BCdata_EventStudy` | Benzarti and Carloni event study dataset | `HonestDiD.md:31` |
-| `computeConditionalCS_DeltaRM` | Conditional confidence set under relative magnitudes restrictions | `HonestDiD.md:108` |
-| `computeConditionalCS_DeltaRMB` | Conditional confidence set under bounded relative magnitudes restrictions | `HonestDiD.md:139` |
-| `computeConditionalCS_DeltaRMM` | Conditional confidence set under monotone relative magnitudes restrictions | `HonestDiD.md:194` |
-| `computeConditionalCS_DeltaSD` | Conditional confidence set under smoothness (DeltaSD) restrictions | `HonestDiD.md:256` |
-| `computeConditionalCS_DeltaSDB` | Conditional confidence set under bounded smoothness restrictions | `HonestDiD.md:311` |
-| `computeConditionalCS_DeltaSDM` | Conditional confidence set under monotone smoothness restrictions | `HonestDiD.md:363` |
-| `computeConditionalCS_DeltaSDRM` | Conditional confidence set under smoothness + relative magnitudes restrictions | `HonestDiD.md:415` |
-| `computeConditionalCS_DeltaSDRMB` | Conditional confidence set under bounded smoothness + relative magnitudes | `HonestDiD.md:471` |
-| `computeConditionalCS_DeltaSDRMM` | Conditional confidence set under monotone smoothness + relative magnitudes | `HonestDiD.md:531` |
-| `constructOriginalCS` | Constructs original confidence interval for parameter of interest, theta = l_vec'tau. | `HonestDiD.md:593` |
-| `createEventStudyPlot` | Constructs event study plot | `HonestDiD.md:641` |
-| `createSensitivityPlot` | Plots sensitivity analysis results (smoothness restrictions) | `HonestDiD.md:698` |
-| `createSensitivityPlot_relativeMagnitudes` | Plots sensitivity analysis results (relative magnitudes restrictions) | `HonestDiD.md:760` |
-| `createSensitivityResults` | Computes sensitivity analysis under smoothness restrictions | `HonestDiD.md:731` |
-| `createSensitivityResults_relativeMagnitudes` | Computes sensitivity analysis under relative magnitudes restrictions | `HonestDiD.md:885` |
-| `DeltaSD_lowerBound_Mpre` | Lower bound on M under DeltaSD restrictions using pre-period data | `HonestDiD.md:970` |
-| `DeltaSD_upperBound_Mpre` | Upper bound on M under DeltaSD restrictions using pre-period data | `HonestDiD.md:1003` |
-| `findOptimalFLCI` | Finds optimal fixed-length confidence interval for treatment effect | `HonestDiD.md:1028` |
-| `LWdata_EventStudy` | Event study estimates from baseline female specification on employment in Lovenheim & Willen (2019). See discussion i... | `HonestDiD.md:50` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R HonestDiD
+Rscript scripts/package-doc.R HonestDiD constructOriginalCS
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [HonestDiD.md](HonestDiD.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 
@@ -148,5 +141,5 @@ createSensitivityPlot_relativeMagnitudes(sens, orig)
 ## Reading Strategy
 
 - Use this quick-start file to choose the right function first.
-- Jump directly to the exact function entry in `pkg.md` using the line pointer.
+- Look up the needed topic using the installed-help commands above.
 - Use `-additional.md` for implementation caveats and repository-derived gotchas.

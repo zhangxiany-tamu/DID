@@ -1,11 +1,11 @@
 # did2s: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `did2s.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived caveats and HonestDiD integration notes, read `did2s-additional.md`.
 
 ## Quick Workflow
@@ -13,23 +13,30 @@ Read this file first. It gives a short workflow and a complete function map, the
 1. Estimate treatment effects using `did2s(...)`.
 2. Build event-study summaries with `event_study(...)` when needed.
 3. Use `gen_data(...)` and bundled datasets for smoke tests.
-4. For sensitivity analysis, use the package's HonestDiD bridge helpers.
+4. For sensitivity analysis, align event-study coefficients with the matching rows and columns of `vcov(es)`; retain off-diagonal covariances.
 
 ## Layer 5 Source (GitHub)
 
 - **Repo**: [kylebutts/did2s](https://github.com/kylebutts/did2s)
 - **Key files**: `R/did2s.R`, `R/event_study.R`, `R/gen_data.R`, `R/honest_did.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `castle` | Castle doctrine example panel dataset | `did2s.md:29` |
-| `df_het` | Simulated heterogeneous-effects dataset | `did2s.md:31` |
-| `df_hom` | Simulated homogeneous-effects dataset | `did2s.md:32` |
-| `did2s` | Two-stage DID estimator following Gardner | `did2s.md:33` |
-| `event_study` | Builds comparable event-study summaries across estimators | `did2s.md:34` |
-| `gen_data` | Simulates panel data for two-stage DID examples | `did2s.md:35` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R did2s
+Rscript scripts/package-doc.R did2s did2s
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [did2s.md](did2s.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 
@@ -74,5 +81,5 @@ fixest::iplot(es,
 ## Reading Strategy
 
 - Use this file to choose the function quickly.
-- Open `did2s.md` for complete argument documentation.
+- Use installed help for current arguments; `did2s.md` preserves the historical snapshot.
 - Use `did2s-additional.md` and source files for implementation-level debugging.

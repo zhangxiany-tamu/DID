@@ -17,7 +17,7 @@ When `did-mcp` is registered, call `did_power_analysis` on an `event_study` hand
 - **Tool**: `did_power_analysis`
 - **Inputs**: `event_study_id` (required), `target_powers` (default `[0.5, 0.8]`), `reference_period` (default `-1`), optional `deltatrue` (hypothesized linear trend vector) — if supplied, the tool also runs `pretrends::pretrends()` and returns the `df_power` table.
 - **Output**: `power_result_N` handle + `detectable_slopes` array with one entry per target power, plus the optional `pretrends` payload.
-- **Diagonal-fallback warning**: if the input event study has `sigma_is_diagonal_fallback=true` (true for every estimator except SA), the tool emits a warning in the `warnings` array — off-diagonal covariance is being ignored and the reported slopes are therefore a conservative (upper-bound) estimate. Report that caveat to the user.
+- **Diagonal-fallback warning**: if the input event study has `sigma_is_diagonal_fallback=true` (inspect the returned flag; SA and did2s normally preserve full covariance), the tool emits a warning in the `warnings` array — off-diagonal covariance is being ignored and power may be over- or understated. Report that caveat to the user.
 
 **Common route**: `did_estimate` → `did_extract_event_study` → `did_power_analysis`. Plumb the `event_study_1` handle in, not a raw estimate.
 
@@ -149,7 +149,7 @@ pt_results <- pretrends(betahat = betahat, sigma = sigma,
 print(pt_results$event_plot)
 ```
 
-> **Diagonal covariance limitation**: `diag(se^2)` assumes zero cross-period correlation. This is an approximation — actual coefficient correlations may cause power to be over- or understated. For analyses where precise power calculations are critical, use SA (which provides a full VCOV via `HonestDiD:::sunab_beta_vcv()`). If SA is unstable for your data (e.g., small cohorts), the CS diagonal approximation is the best available option.
+> **Diagonal covariance limitation**: `diag(se^2)` assumes zero cross-period correlation. This is an approximation — actual coefficient correlations may cause power to be over- or understated. For analyses where precise power calculations are critical, use SA (which provides a full VCOV via `HonestDiD:::sunab_beta_vcv()`) or did2s with its covariance matched to event-study coefficient names. A CS diagonal approximation remains a limitation, not a guaranteed conservative bound.
 
 ### Handling Singular Covariance Matrix from CS
 

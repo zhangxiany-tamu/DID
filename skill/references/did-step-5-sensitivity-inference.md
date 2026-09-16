@@ -2,6 +2,7 @@
 
 ## Contents
 - [Coefficient Extraction Cookbook](#coefficient-extraction-cookbook)
+  - [From Gardner / did2s](#from-gardner--did2s)
 - [HonestDiD: Sensitivity Analysis](#honestdid-sensitivity-analysis)
   - [When the Baseline Effect Is Non-Significant](#when-the-baseline-effect-is-non-significant)
   - [Pre-Period Selection for HonestDiD](#pre-period-selection-for-honestdid)
@@ -20,7 +21,7 @@ When `did-mcp` is registered, Step 5 is three tool calls:
 
 | Goal | Tool | Notes |
 |---|---|---|
-| Pull `{betahat, sigma, tVec}` from any estimate | `did_extract_event_study` | Dispatches on the estimator's R class (MP / fixest / did_imputation_result / staggered_combined). Returns `sigma_is_diagonal_fallback` + `fallback_reason` so you know whether sigma is the true VCOV (SA with HonestDiD present) or `diag(se^2)` — downstream HonestDiD results are only trustworthy when the matrix is the real thing. |
+| Pull `{betahat, sigma, tVec}` from any estimate | `did_extract_event_study` | Dispatches on the estimator's R class (MP / fixest / did_imputation_result / staggered_combined). Returns `sigma_is_diagonal_fallback` + `fallback_reason` so you know whether sigma is the true VCOV (SA with HonestDiD present, or did2s matched by coefficient names) or `diag(se^2)` — downstream HonestDiD results are only trustworthy when the matrix is the real thing. |
 | Run HonestDiD sensitivity | `did_honest_sensitivity` on an `event_study` handle | Default `method="relative_magnitudes"` with `Mbarvec = seq(0.5, 2, by=0.5)`; switch to `method="smoothness"` + `Mvec` when appropriate. Returns robust CI rows + the original (non-robust) CI + the breakdown M (smallest M at which the robust CI includes zero, or `NA` if the effect is robust to every tested M). |
 | Plot the sensitivity | `did_plot` on a `honest_result` handle | Auto-picks the HonestDiD plot kind; shows robust CIs vs. M with the original CI as a grey backdrop. |
 | Doubly-robust single-period DiD | `did_drdid` | Takes a panel (two distinct time values or `time_values: [pre, post]` on a longer panel), optional `xformla_vars` + `est_method` ∈ {dr, ipw, reg, trad, imp}. Returns a standard `estimate` handle with the overall ATT. |
@@ -103,6 +104,30 @@ tVec  <- as.numeric(es$egt)
 ```
 
 Note: The `did` package returns standard errors, not a full covariance matrix. Using `diag(se^2)` assumes zero covariance between event-study coefficients. For CS, use `es$V.analytical` if available for the full matrix.
+
+### From Gardner / did2s
+
+```r
+# gardner_es is the did2s fit from Step 3. Match by names, not matrix position.
+beta_all <- coef(gardner_es)
+nms <- names(beta_all)
+keep <- grepl("^rel_time::", nms)
+coef_names <- nms[keep]
+tVec <- as.integer(sub("^rel_time::", "", coef_names))
+V <- vcov(gardner_es)
+stopifnot(length(coef_names) > 0L, all(coef_names %in% rownames(V)),
+          all(coef_names %in% colnames(V)))
+betahat <- as.numeric(beta_all[keep])
+sigma <- V[coef_names, coef_names, drop = FALSE]
+valid <- is.finite(betahat) & is.finite(diag(sigma)) & diag(sigma) > 0
+betahat <- betahat[valid]
+tVec <- tVec[valid]
+sigma <- sigma[valid, valid, drop = FALSE]
+stopifnot(all(is.finite(sigma)))
+```
+
+Use the actual relative-time variable's coefficient prefix if it differs from
+`rel_time`. The MCP wrapper uses `.did2s_rel`. Preserve the off-diagonal entries.
 
 ### From didimputation / BJS
 

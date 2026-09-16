@@ -55,6 +55,8 @@ profile_did_design <- function(data, id_var, time_var, treat_timing_var, treat_v
   ids   <- data[[id_var]]
   times <- data[[time_var]]
   g     <- data[[treat_timing_var]]
+  sentinel <- attr(data, "did_never_treated_sentinels")[[treat_timing_var]]
+  if (!is.null(sentinel)) g[!is.na(g) & g == sentinel] <- 0
 
   n_units   <- length(unique(ids))
   n_periods <- length(unique(times))
@@ -373,6 +375,8 @@ Treatment timing variables often use sentinel values (e.g., `gname = 2000` when 
 ```r
 check_sentinel_values <- function(data, id_var, time_var, treat_timing_var) {
   g <- data[[treat_timing_var]]
+  sentinel <- attr(data, "did_never_treated_sentinels")[[treat_timing_var]]
+  if (!is.null(sentinel)) g[!is.na(g) & g == sentinel] <- 0
   time_range <- range(data[[time_var]], na.rm = TRUE)
 
   # Get unique gname values (excluding NA, 0, Inf)
@@ -400,9 +404,12 @@ Units treated at or before the first observed period are "always treated" within
 ```r
 check_already_treated <- function(data, id_var, time_var, treat_timing_var) {
   min_time <- min(data[[time_var]], na.rm = TRUE)
+  g <- data[[treat_timing_var]]
+  sentinel <- attr(data, "did_never_treated_sentinels")[[treat_timing_var]]
+  if (!is.null(sentinel)) g[!is.na(g) & g == sentinel] <- 0
 
   # Get one gname per unit
-  unit_g <- tapply(data[[treat_timing_var]], data[[id_var]], function(x) {
+  unit_g <- tapply(g, data[[id_var]], function(x) {
     vals <- unique(x[!is.na(x) & x != 0 & !is.infinite(x)])
     if (length(vals) == 0) return(NA_real_)
     vals[1]
@@ -430,6 +437,8 @@ Units with `gname` values after the last observed period are effectively never-t
 check_future_treatment <- function(data, id_var, time_var, treat_timing_var) {
   max_time <- max(data[[time_var]], na.rm = TRUE)
   g <- data[[treat_timing_var]]
+  sentinel <- attr(data, "did_never_treated_sentinels")[[treat_timing_var]]
+  if (!is.null(sentinel)) g[!is.na(g) & g == sentinel] <- 0
 
   # Get one gname per unit (excluding never-treated)
   unit_g <- tapply(g, data[[id_var]], function(x) {
@@ -456,30 +465,68 @@ check_future_treatment <- function(data, id_var, time_var, treat_timing_var) {
 
 ## Never-Treated Coding Conversion
 
-Each estimator expects a different coding for never-treated units. Use this helper to convert between conventions:
+Use zero for `did` and `didimputation`, and `Inf` for `fixest::sunab` and `staggered`. NA cohorts are dropped by `sunab`. The legacy `max_plus_10` target requires `time_var` and places a non-colliding sentinel after the observed time endpoint; BJS does not require it.
+
+The helper records generated finite sentinels in an R attribute so later recoding preserves never-treated identity. This attribute survives RDS, but not CSV export. Normalize to zero before exporting; do not infer that arbitrary imported future cohorts are never-treated.
+
+Use this helper to convert between conventions:
 
 ```r
-recode_never_treated <- function(data, gname_var, target = c("zero", "na", "inf", "max_plus_10")) {
+generated_never_treated_rows <- function(data, gname_var) {
+  sentinel <- attr(data, "did_never_treated_sentinels")[[gname_var]]
+  g <- data[[gname_var]]
+  if (is.null(sentinel)) return(rep(FALSE, length(g)))
+  !is.na(g) & g == sentinel
+}
+
+never_treated_rows <- function(data, gname_var) {
+  g <- data[[gname_var]]
+  is.na(g) | g == 0 | is.infinite(g) |
+    generated_never_treated_rows(data, gname_var)
+}
+
+recode_never_treated <- function(data, gname_var,
+                                target = c("zero", "na", "inf", "max_plus_10"),
+                                time_var = NULL) {
   target <- match.arg(target)
   g <- data[[gname_var]]
-
-  # Identify never-treated (could be 0, NA, or Inf in source data)
-  is_never <- is.na(g) | g == 0 | is.infinite(g)
-
-  data[[gname_var]] <- switch(target,
-    "zero"        = { g[is_never] <- 0;                        g },
-    "na"          = { g[is_never] <- NA_real_;                  g },
-    "inf"         = { g[is_never] <- Inf;                       g },
-    "max_plus_10" = { g[is_never] <- max(g[!is_never], na.rm = TRUE) + 10; g }
-  )
+  is_never <- never_treated_rows(data, gname_var)
+  sentinels <- attr(data, "did_never_treated_sentinels")
+  if (is.null(sentinels)) sentinels <- list()
+  sentinels[[gname_var]] <- NULL
+  if (target == "max_plus_10") {
+    if (is.null(time_var) || !time_var %in% names(data)) {
+      stop("max_plus_10 requires time_var to place the sentinel after observed time.", call. = FALSE)
+    }
+    times <- data[[time_var]]
+    if (!is.numeric(times) || !any(is.finite(times))) {
+      stop("max_plus_10 requires finite numeric observed times.", call. = FALSE)
+    }
+    endpoint <- max(times[is.finite(times)])
+    sentinel <- endpoint + 10
+    # Do not turn a real future-treated cohort into a never-treated group.
+    while (is.finite(sentinel) && sentinel %in% g[!is_never]) {
+      next_sentinel <- sentinel + 10
+      if (next_sentinel <= sentinel) break
+      sentinel <- next_sentinel
+    }
+    if (!is.finite(sentinel) || sentinel <= endpoint || sentinel %in% g[!is_never]) {
+      stop("Cannot construct a distinct finite sentinel beyond observed time.", call. = FALSE)
+    }
+    if (any(is_never)) sentinels[[gname_var]] <- sentinel
+  } else {
+    sentinel <- switch(target, zero = 0, na = NA_real_, inf = Inf)
+  }
+  g[is_never] <- sentinel
+  data[[gname_var]] <- g
+  attr(data, "did_never_treated_sentinels") <- if (length(sentinels)) sentinels else NULL
   data
 }
 
-# Usage by estimator:
-# df_cs   <- recode_never_treated(df, "first_treat", target = "zero")       # did (CS)
-# df_sa   <- recode_never_treated(df, "first_treat", target = "na")         # fixest (SA)
-# df_bjs  <- recode_never_treated(df, "first_treat", target = "max_plus_10") # didimputation (BJS)
-# df_stag <- recode_never_treated(df, "first_treat", target = "inf")        # staggered
+# df_cs   <- recode_never_treated(df, "first_treat", target = "zero") # did (CS)
+# df_sa   <- recode_never_treated(df, "first_treat", target = "inf")  # fixest (SA)
+# df_bjs  <- recode_never_treated(df, "first_treat", target = "zero") # didimputation
+# df_stag <- recode_never_treated(df, "first_treat", target = "inf")  # staggered
 ```
 
 ---

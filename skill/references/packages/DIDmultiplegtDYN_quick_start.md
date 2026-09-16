@@ -1,11 +1,11 @@
 # DIDmultiplegtDYN: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `DIDmultiplegtDYN.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived caveats and branch/version notes, read `DIDmultiplegtDYN-additional.md`.
 
 ## Quick Workflow
@@ -20,15 +20,23 @@ Read this file first. It gives a short workflow and a complete function map, the
 - **Repo**: [Credible-Answers/did_multiplegt_dyn](https://github.com/Credible-Answers/did_multiplegt_dyn)
 - **Key files**: `R/R/did_multiplegt_dyn.R`, `R/R/did_multiplegt_bootstrap.R`, `R/R/did_multiplegt_dyn_design.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `did_multiplegt_dyn` | Core heterogeneity-robust dynamic DID estimator | `DIDmultiplegtDYN.md:45` |
-| `favara_imbs` | Example dataset used by package examples | `DIDmultiplegtDYN.md:28` |
-| `print.did_multiplegt_dyn` | Print method for model results | `DIDmultiplegtDYN.md:29` |
-| `rnames.did_multiplegt_dyn` | Helper for result naming/output formatting | `DIDmultiplegtDYN.md:30` |
-| `summary.did_multiplegt_dyn` | Summary method for model results | `DIDmultiplegtDYN.md:31` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R DIDmultiplegtDYN
+Rscript scripts/package-doc.R DIDmultiplegtDYN did_multiplegt_dyn
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [DIDmultiplegtDYN.md](DIDmultiplegtDYN.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 

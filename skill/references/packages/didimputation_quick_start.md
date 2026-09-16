@@ -1,17 +1,17 @@
 # didimputation: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `didimputation.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived implementation tips, read `didimputation-additional.md`.
 
 ## Quick Workflow
 
 1. Estimate ATT/event-study effects with `did_imputation(...)`.
-2. Confirm balanced panel structure and treatment timing coding.
+2. Confirm balanced panel structure and code never-treated cohorts as `0`.
 3. Use simulated datasets for initial checks before production runs.
 
 ## Layer 5 Source (GitHub)
@@ -19,13 +19,23 @@ Read this file first. It gives a short workflow and a complete function map, the
 - **Repo**: [kylebutts/didimputation](https://github.com/kylebutts/didimputation)
 - **Key files**: `R/did_imputation.R`, `R/data.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `df_het` | Simulated dataset with heterogeneous treatment effects | `didimputation.md:25` |
-| `df_hom` | Simulated dataset with homogeneous treatment effects | `didimputation.md:26` |
-| `did_imputation` | Imputation-based DiD estimator (Borusyak, Jaravel, Spiess) | `didimputation.md:96` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R didimputation
+Rscript scripts/package-doc.R didimputation did_imputation
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [didimputation.md](didimputation.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 
@@ -79,5 +89,5 @@ ggplot(pts, aes(x = rel_year, y = estimate)) +
 ## Reading Strategy
 
 - Start here to confirm the right estimator entry point.
-- Open `didimputation.md` for full argument and example details.
+- Use installed help for current arguments; `didimputation.md` preserves the historical snapshot.
 - Use source references for edge-case debugging of preprocessing and SE handling.

@@ -3,27 +3,69 @@
 # ============================================================================
 # Unifies never-treated coding (0 / NA / Inf / max_plus_10) so a panel can be
 # passed to the estimator that expects that convention. The recode function
-# body is a byte-aligned copy of skill/references/did-step-1-treatment-
-# structure.md:446-460. Do not edit semantically; re-sync on skill change.
+# helpers are mirrored in the skill's Step 1 never-treated coding section.
+#
+# ## Contents
+# - [Coding helpers](#coding-helpers)
+# - [Dispatch handler](#dispatch-handler)
 # ============================================================================
 
-recode_never_treated <- function(data, gname_var, target = c("zero", "na", "inf", "max_plus_10")) {
+# ## Coding helpers
+# Record only sentinels created here: an arbitrary future cohort in imported
+# data is not enough evidence that a unit is never treated. The attribute
+# survives RDS worker recycling; CSV export does not preserve it.
+generated_never_treated_rows <- function(data, gname_var) {
+  sentinel <- attr(data, "did_never_treated_sentinels")[[gname_var]]
+  g <- data[[gname_var]]
+  if (is.null(sentinel)) return(rep(FALSE, length(g)))
+  !is.na(g) & g == sentinel
+}
+
+never_treated_rows <- function(data, gname_var) {
+  g <- data[[gname_var]]
+  is.na(g) | g == 0 | is.infinite(g) |
+    generated_never_treated_rows(data, gname_var)
+}
+
+recode_never_treated <- function(data, gname_var,
+                                target = c("zero", "na", "inf", "max_plus_10"),
+                                time_var = NULL) {
   target <- match.arg(target)
   g <- data[[gname_var]]
-
-  # Identify never-treated (could be 0, NA, or Inf in source data)
-  is_never <- is.na(g) | g == 0 | is.infinite(g)
-
-  data[[gname_var]] <- switch(target,
-    "zero"        = { g[is_never] <- 0;                        g },
-    "na"          = { g[is_never] <- NA_real_;                  g },
-    "inf"         = { g[is_never] <- Inf;                       g },
-    "max_plus_10" = { g[is_never] <- max(g[!is_never], na.rm = TRUE) + 10; g }
-  )
+  is_never <- never_treated_rows(data, gname_var)
+  sentinels <- attr(data, "did_never_treated_sentinels")
+  if (is.null(sentinels)) sentinels <- list()
+  sentinels[[gname_var]] <- NULL
+  if (target == "max_plus_10") {
+    if (is.null(time_var) || !time_var %in% names(data)) {
+      stop("max_plus_10 requires time_var to place the sentinel after observed time.", call. = FALSE)
+    }
+    times <- data[[time_var]]
+    if (!is.numeric(times) || !any(is.finite(times))) {
+      stop("max_plus_10 requires finite numeric observed times.", call. = FALSE)
+    }
+    endpoint <- max(times[is.finite(times)])
+    sentinel <- endpoint + 10
+    # Do not turn a real future-treated cohort into a never-treated group.
+    while (is.finite(sentinel) && sentinel %in% g[!is_never]) {
+      next_sentinel <- sentinel + 10
+      if (next_sentinel <= sentinel) break
+      sentinel <- next_sentinel
+    }
+    if (!is.finite(sentinel) || sentinel <= endpoint || sentinel %in% g[!is_never]) {
+      stop("Cannot construct a distinct finite sentinel beyond observed time.", call. = FALSE)
+    }
+    if (any(is_never)) sentinels[[gname_var]] <- sentinel
+  } else {
+    sentinel <- switch(target, zero = 0, na = NA_real_, inf = Inf)
+  }
+  g[is_never] <- sentinel
+  data[[gname_var]] <- g
+  attr(data, "did_never_treated_sentinels") <- if (length(sentinels)) sentinels else NULL
   data
 }
 
-# ---- Dispatch handler -------------------------------------------------------
+# ## Dispatch handler
 
 dispatch_recode_never_treated <- function(id, params) {
   run_with_capture(id, function() {
@@ -50,13 +92,12 @@ dispatch_recode_never_treated <- function(id, params) {
            call. = FALSE)
     }
 
-    df_new <- recode_never_treated(df, treat_timing_var, target = target)
+    df_new <- recode_never_treated(df, treat_timing_var, target = target,
+                                  time_var = params$time_var)
     store_object(handle_id, df_new)
 
     # Count how many rows were recoded (for the result summary)
-    g_old <- df[[treat_timing_var]]
-    g_new <- df_new[[treat_timing_var]]
-    n_never_source <- sum(is.na(g_old) | g_old == 0 | is.infinite(g_old))
+    n_never_source <- sum(never_treated_rows(df, treat_timing_var))
 
     # Build schema — inherit columns from source panel's RPC call params
     schema <- list(

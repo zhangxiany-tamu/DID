@@ -1,5 +1,10 @@
 ## Package 'YatchewTest'
 
+> **Historical reference snapshot.** The version recorded here belongs to this
+> snapshot and may differ from the installed package or validation ledger. Use
+> [installed help](YatchewTest_quick_start.md#installed-help-topics) for current
+> arguments. This file remains available as a historical fallback.
+
 July 21, 2025
 Title Yatchew (1997), De Chaisemartin \& D'Haultfoeuille (2024) Linearity Test
 

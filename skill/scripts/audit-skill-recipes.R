@@ -1,4 +1,13 @@
 #!/usr/bin/env Rscript
+# ## Contents
+# - [Setup](#setup)
+# - [Recipe helpers](#recipe-helpers)
+# - [Treatment structure](#treatment-structure)
+# - [TWFE diagnostics](#twfe-diagnostics)
+# - [Estimation](#estimation)
+# - [Power analysis](#power-analysis)
+# - [Sensitivity analysis](#sensitivity-analysis)
+#
 # ============================================================================
 # did-analysis skill — 5-step fallback recipe audit
 # ============================================================================
@@ -28,6 +37,7 @@
 #   ]
 # }
 
+# ## Setup
 suppressPackageStartupMessages({
   ok <- TRUE
   for (pkg in c("jsonlite", "did", "fixest", "bacondecomp", "TwoWayFEWeights",
@@ -48,6 +58,7 @@ output_path <- args[2]
 config <- jsonlite::read_json(config_path, simplifyVector = FALSE)
 
 # Helper: capture warnings + errors from a block.
+# ## Recipe helpers
 run_block <- function(label, expr) {
   warnings_acc <- character(0)
   withCallingHandlers(
@@ -77,23 +88,21 @@ parse_sunab_event_time <- function(nms) {
 
 # Convert gname column (character) into numeric with never-treated coded per
 # estimator's convention.
-coerce_g <- function(g_col, code = c("zero", "inf", "max_plus_10", "na")) {
+coerce_g <- function(g_col, code = c("zero", "inf", "na")) {
   code <- match.arg(code)
   g_num <- suppressWarnings(as.numeric(g_col))
+  g_num[is.na(g_num) | g_num == 0 | is.infinite(g_num)] <- NA_real_
   if (code == "zero") {
     g_num[is.na(g_num)] <- 0
   } else if (code == "inf") {
     g_num[is.na(g_num)] <- Inf
-  } else if (code == "max_plus_10") {
-    valid <- g_num[is.finite(g_num)]
-    if (length(valid) == 0) stop("no finite cohorts to compute max_plus_10")
-    g_num[is.na(g_num)] <- max(valid) + 10
   }
   # "na" leaves NA as-is.
   g_num
 }
 
 # Step 1 recipe — panelView rollout + balance summary.
+# ## Treatment structure
 step1_recipe <- function(df, ds) {
   cat(sprintf("[%s] step 1...\n", ds$name))
   balanced <- run_block("balance", {
@@ -138,6 +147,7 @@ step1_recipe <- function(df, ds) {
 }
 
 # Step 2 recipe — Bacon + TwoWayFEWeights.
+# ## TWFE diagnostics
 step2_recipe <- function(df, ds) {
   cat(sprintf("[%s] step 2...\n", ds$name))
   bacon <- run_block("bacon", {
@@ -186,6 +196,7 @@ step2_recipe <- function(df, ds) {
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
 # Step 3 recipe — 5 estimators.
+# ## Estimation
 step3_recipe <- function(df, ds) {
   cat(sprintf("[%s] step 3...\n", ds$name))
   # did::att_gt requires gname with 0 for never-treated.
@@ -244,7 +255,7 @@ step3_recipe <- function(df, ds) {
   })
   bjs <- run_block("bjs", {
     df_bj <- as.data.frame(df)
-    df_bj[[".gname_bj"]] <- coerce_g(df_bj[[ds$gname_var]], "max_plus_10")
+    df_bj[[".gname_bj"]] <- coerce_g(df_bj[[ds$gname_var]], "zero")
     res <- didimputation::did_imputation(
       data = df_bj,
       yname = ds$outcome_var,
@@ -297,6 +308,7 @@ step3_recipe <- function(df, ds) {
 # step-4 reference, the preferred path re-fits SA with full VCOV (via
 # HonestDiD:::sunab_beta_vcv). We re-fit here to get the real sigma rather
 # than rely on JSON round-tripping of matrices.
+# ## Power analysis
 step4_recipe <- function(df, ds) {
   cat(sprintf("[%s] step 4...\n", ds$name))
   run_block("power", {
@@ -339,6 +351,7 @@ step4_recipe <- function(df, ds) {
 
 # Step 5 recipe — HonestDiD on SA event study (preferred). Requires full
 # sigma from SA — re-run sunab_beta_vcv here rather than relying on step3.
+# ## Sensitivity analysis
 step5_recipe <- function(df, ds) {
   cat(sprintf("[%s] step 5...\n", ds$name))
   run_block("honest", {

@@ -29,7 +29,7 @@ export const DID_RECODE_NEVER_TREATED_SCHEMA = {
       type: "string",
       enum: ["zero", "na", "inf", "max_plus_10"],
       description:
-        "Target encoding for never-treated units. zero=CS (did); na=SA (fixest::sunab); inf=staggered; max_plus_10=BJS (didimputation).",
+        "Target encoding for never-treated units. zero=CS/BJS; inf=SA (fixest::sunab)/staggered; na=generic missing-value coding. max_plus_10 is a legacy finite sentinel beyond observed time (not needed by BJS); its identity is preserved within MCP handles, not CSV exports.",
     },
   },
   required: ["panel_id", "target"],

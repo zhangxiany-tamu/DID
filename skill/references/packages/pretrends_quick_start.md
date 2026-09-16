@@ -1,11 +1,11 @@
 # pretrends: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `pretrends.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived implementation notes, read `pretrends-additional.md`.
 
 ## Quick Workflow
@@ -20,18 +20,23 @@ Read this file first. It gives a short workflow and a complete function map, the
 - **Repo**: [jonathandroth/pretrends](https://github.com/jonathandroth/pretrends)
 - **Key files**: `R/pretrends-plot.R`, `R/power-calculation-fns.R`, `R/utility_functions.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `pretrends` | Power and rejection-probability analysis for event-study pre-trend tests | `pretrends.md:58` |
-| `slope_for_power` | Returns linear trend slope detectable at target power | `pretrends.md:172` |
-| `rejectionProbability_NIS` | Computes rejection probability under null-imposed slope scenarios | `pretrends.md:246` |
-| `meanBetaPre_NIS` | Computes expected pre-period coefficients under NIS setup | `pretrends.md:264` |
-| `meanBetaPost_NIS` | Computes expected post-period coefficients under NIS setup | `pretrends.md:282` |
-| `betaPostNullRejectionProbability_NIS` | Post-period null rejection-probability helper | `pretrends.md:305` |
-| `findSlopeForPower_NIS` | NIS helper to solve for slope at target power | `pretrends.md:329` |
-| `HeAndWangResults` | Included example object/data for replication | `pretrends.md:354` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R pretrends
+Rscript scripts/package-doc.R pretrends pretrends
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [pretrends.md](pretrends.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 
@@ -91,5 +96,5 @@ data.frame(Power = power_levels, Detectable_Slope = round(slopes, 4))
 ## Reading Strategy
 
 - Use this file to pick the right power function.
-- Open `pretrends.md` for complete arguments and plotting options.
+- Use installed help for current arguments; `pretrends.md` preserves the historical snapshot.
 - Use source references when validating matrix alignment and numerical routines.

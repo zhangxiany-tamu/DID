@@ -51,13 +51,26 @@ npm run build
 
 ## R packages
 
-Install the R packages the workflow depends on (P0 + P1 tiers from `../skill/METHOD_MATRIX.md`):
+Install missing packages from the shared [registry](../skill/references/package-registry.json):
 
 ```bash
+Rscript r/install_packages.R --dry-run
 Rscript r/install_packages.R
+# Core runtime only:
+Rscript r/install_packages.R --required-only
 ```
 
-P0 packages are required; P1 packages are best-effort and tools depending on them error gracefully when absent. `pretrends` and `synthdid` install from GitHub; the rest come from CRAN.
+Existing versions are retained. Required packages must succeed; optional packages are
+best-effort, and manual packages are listed for use when needed. `pretrends` and
+`synthdid` install from GitHub. Method priority and installation policy are separate.
+
+`did_ping` returns `bridge.package_provenance` from the actual R worker, including R/library
+paths, installed versions, and recorded GitHub SHAs. Estimator responses include the
+package used in `metadata.packages`. `version` follows an already-loaded namespace;
+`installedVersion` and `loadedVersion` expose differences after an in-session update.
+Restart the worker before validating such an environment. Workers use `Rscript --vanilla`; project startup
+configuration may differ from a separate R session. See
+[package maintenance](../skill/PACKAGE_MAINTENANCE.md) for installed help and API checks.
 
 ## Register with Claude Code
 

@@ -1,3 +1,7 @@
+# ## Contents
+# - [Design profile](#design-profile)
+# - [Dispatch handler](#dispatch-handler)
+#
 # ============================================================================
 # did-mcp — Step 1: did_profile_design
 # ============================================================================
@@ -8,6 +12,7 @@
 # body semantically; if the skill version changes, re-sync both sides.
 # ============================================================================
 
+# ## Design profile
 profile_did_design <- function(data, id_var, time_var, treat_timing_var, treat_var = NULL) {
   cat("========================================\n")
   cat("  DiD Treatment Structure Profile\n")
@@ -16,6 +21,8 @@ profile_did_design <- function(data, id_var, time_var, treat_timing_var, treat_v
   ids   <- data[[id_var]]
   times <- data[[time_var]]
   g     <- data[[treat_timing_var]]
+  sentinel <- attr(data, "did_never_treated_sentinels")[[treat_timing_var]]
+  if (!is.null(sentinel)) g[!is.na(g) & g == sentinel] <- 0
 
   n_units   <- length(unique(ids))
   n_periods <- length(unique(times))
@@ -172,6 +179,7 @@ profile_did_design <- function(data, id_var, time_var, treat_timing_var, treat_v
 
 # ---- Dispatch handler -------------------------------------------------------
 
+# ## Dispatch handler
 dispatch_profile_design <- function(id, params) {
   run_with_capture(id, function() {
     panel_id  <- params$panel_id

@@ -1,9 +1,14 @@
 #!/usr/bin/env node
+// ## Contents
+// - [Setup](#setup)
+// - [Estimator checks](#estimator-checks)
+//
 // Broader smoke: run did_estimate with each of the five estimators on the
 // mpdta fixture and assert each produces a finite overall ATT + non-empty
 // event study. Complements scripts/smoke-test.mjs which only exercises CS.
 // Exits 0 on success, 1 on any failure.
 
+// ## Setup
 import { spawn } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -82,6 +87,7 @@ async function callTool(name, args) {
   return JSON.parse(res.content[0].text);
 }
 
+// ## Estimator checks
 (async () => {
   try {
     await send("initialize", {
@@ -133,14 +139,40 @@ async function callTool(name, args) {
       if (!payload.handle || !payload.handle.startsWith("estimate_")) {
         throw new Error(`${est}: expected estimate_* handle, got ${payload.handle}`);
       }
+      const packageName = { cs: "did", sa: "fixest", bjs: "didimputation", did2s: "did2s", staggered: "staggered" }[est];
+      const provenance = payload.metadata?.packages?.find(p => p.name === packageName);
+      if (!provenance?.installed || !provenance.version || !provenance.library || !provenance.path) {
+        throw new Error(`${est}: missing actual estimator package provenance`);
+      }
 
       // Extract event study and confirm the fallback flag is set correctly.
       const es = await callTool("did_extract_event_study", { estimate_id: payload.handle });
-      const expected_fallback = est !== "sa"; // only SA gets matched sunab VCOV
+      const expected_fallback = !["sa", "did2s"].includes(est);
       if (Boolean(es.sigma_is_diagonal_fallback) !== expected_fallback) {
         throw new Error(
           `${est}: sigma_is_diagonal_fallback=${es.sigma_is_diagonal_fallback}, expected ${expected_fallback}`,
         );
+      }
+      if (est === "did2s") {
+        const power = await callTool("did_power_analysis", {
+          event_study_id: es.handle, target_powers: [0.5, 0.8],
+        });
+        if (!Array.isArray(power.detectable_slopes) || power.detectable_slopes.length !== 2 ||
+            power.detectable_slopes.some(row => !Number.isFinite(row.slope))) {
+          throw new Error("did2s: downstream power did not return both finite slopes");
+        }
+        const honest = await callTool("did_honest_sensitivity", {
+          event_study_id: es.handle, Mbarvec: [0.5], max_pre_periods: 2, max_post_periods: 2,
+        });
+        if (!Array.isArray(honest.robust) || honest.robust.length === 0 ||
+            honest.robust.some(row => !Number.isFinite(row.lb) || !Number.isFinite(row.ub) || row.lb > row.ub)) {
+          throw new Error("did2s: downstream HonestDiD did not return finite ordered CI bounds");
+        }
+        const warnings = [...(power.warnings || []), ...(honest.warnings || [])];
+        if (warnings.some(warning => /diagonal.fallback|ignor.{0,20}off.diagonal/i.test(String(warning)))) {
+          throw new Error("did2s: downstream inference incorrectly reported diagonal covariance fallback");
+        }
+        console.log(`OK did2s downstream: slopes=${power.detectable_slopes.map(row => `${row.target_power}:${row.slope.toFixed(4)}`).join(",")} finite_CIs=${honest.robust.length}`);
       }
       results.push({ est, att, n_events, handle: payload.handle, es_handle: es.handle });
     }

@@ -1,3 +1,13 @@
+# ## Contents
+# - [Never-treated coercion](#never-treated-coercion)
+# - [Cohort-size summary](#cohort-size-summary)
+# - [Small-cohort flag](#small-cohort-flag)
+# - [Panel balance check (silent)](#panel-balance-check-silent)
+# - [VCOV diagnostics](#vcov-diagnostics)
+# - [Envelope builders](#envelope-builders)
+# - [fixest / sunab VCOV extraction](#fixest--sunab-vcov-extraction)
+# - [Event-time name parsing](#event-time-name-parsing)
+#
 # ============================================================================
 # did-mcp — Step 3 common helpers
 # ============================================================================
@@ -11,38 +21,29 @@
 # JSON shape across all five packages.
 # ============================================================================
 
-# ---- Never-treated coercion -------------------------------------------------
+# ## Never-treated coercion
 # Each estimator expects gname to encode never-treated with a specific sentinel.
-# Source gname may already be in any convention (NA / 0 / Inf / max+10); we
-# normalize to the requested sentinel and return a fresh data.frame.
+# Finite sentinels are recognized only when created by our recoding helper.
+# Imported finite values require an explicit, design-informed recoding.
 
 coerce_never_treated_for_estimator <- function(df, gname, estimator) {
-  g <- df[[gname]]
-  is_never <- is.na(g) | g == 0 | is.infinite(g)
-
-  max_observed <- suppressWarnings(max(g[!is_never], na.rm = TRUE))
-  if (!is.finite(max_observed)) max_observed <- 0
-
-  sentinel <- switch(estimator,
-    "cs"        = 0,
-    "sa"        = Inf,
-    "staggered" = Inf,
-    "bjs"       = max_observed + 10,
-    "did2s"     = 0,                          # did2s uses a binary treat col
+  target <- switch(estimator,
+    "cs"        = "zero",
+    "sa"        = "inf",
+    "staggered" = "inf",
+    "bjs"       = "zero",                    # documented didimputation convention
+    "did2s"     = "zero",                    # did2s uses a binary treat col
     stop(sprintf("coerce_never_treated_for_estimator: unknown estimator '%s'", estimator),
          call. = FALSE)
   )
 
-  g[is_never] <- sentinel
-  df[[gname]] <- g
-  df
+  recode_never_treated(df, gname, target)
 }
 
-# ---- Cohort-size summary ----------------------------------------------------
-
+# ## Cohort-size summary
 summarize_cohort_sizes <- function(df, gname, id_var) {
   g <- df[[gname]]
-  is_never <- is.na(g) | g == 0 | is.infinite(g)
+  is_never <- never_treated_rows(df, gname)
   sub <- df[!is_never, c(id_var, gname), drop = FALSE]
   if (nrow(sub) == 0) return(list())
   # first g per unit
@@ -53,7 +54,7 @@ summarize_cohort_sizes <- function(df, gname, id_var) {
   out
 }
 
-# ---- Small-cohort flag ------------------------------------------------------
+# ## Small-cohort flag
 # Given a cohort_sizes list ({cohort: n_units}), return a list of the cohorts
 # with fewer than `threshold` units. Estimators (did, fixest::sunab) silently
 # drop these in several common cases, which agents and downstream consumers
@@ -72,7 +73,7 @@ flag_small_cohorts <- function(cohort_sizes, threshold = 2L) {
   )
 }
 
-# ---- Panel balance check (silent) ------------------------------------------
+# ## Panel balance check (silent)
 # step1_checks.R::check_panel_balance() prints to stdout. Step 3 wrappers need
 # a silent balance probe — we do not want the cat() output captured into the
 # RpcResponse.stdout field every time BJS runs. Keep this self-contained so
@@ -84,8 +85,7 @@ panel_is_balanced <- function(df, id_var, time_var) {
   all(obs_per_unit == n_periods)
 }
 
-# ---- VCOV diagnostics -------------------------------------------------------
-
+# ## VCOV diagnostics
 check_vcov_psd <- function(V) {
   if (is.null(V) || any(!is.finite(V))) {
     return(list(psd = FALSE, min_eig = NA_real_, note = "VCOV contains non-finite entries"))
@@ -98,8 +98,7 @@ check_vcov_psd <- function(V) {
        note = if (min_eig < -1e-8) "VCOV has negative eigenvalue" else "OK")
 }
 
-# ---- Envelope builders ------------------------------------------------------
-
+# ## Envelope builders
 make_overall <- function(att, se, alpha = 0.05) {
   if (is.null(att) || !is.finite(att)) {
     return(list(att = NA_real_, se = NA_real_,
@@ -141,15 +140,13 @@ make_event_rows <- function(event_time, estimate, se, alpha = 0.05) {
   out
 }
 
-# ---- fixest / sunab VCOV extraction -----------------------------------------
+# ## fixest / sunab VCOV extraction
 # Shared helper for SA (est_sa) and extract_event_study.fixest. Returns a
 # structured record instead of silently degrading, so callers can decide
 # whether to warn, fail, or surface a flag downstream.
 #
-# For did2s-fitted models (detected via ".did2s_rel::" in coefficient names),
-# we do NOT try HonestDiD:::sunab_beta_vcv(); that helper is sunab-specific
-# and always errors on did2s objects. Skipping avoids a spurious fallback
-# warning on every did2s extract.
+# did2s models expose the full event-time covariance directly via vcov().
+# Match its names explicitly; the private sunab helper is only for SA.
 #
 # `is_fallback` is TRUE whenever the returned V is diag(se^2) rather than the
 # matched event-time VCOV; downstream HonestDiD/pretrends consumers MUST
@@ -160,16 +157,26 @@ is_did2s_fixest_model <- function(model) {
   any(grepl("^\\.did2s_rel::", nms))
 }
 
-extract_sunab_vcov <- function(model, expected_len) {
+extract_sunab_vcov <- function(model, expected_len, coef_names = NULL) {
   if (is_did2s_fixest_model(model)) {
-    se <- tryCatch(fixest::se(model), error = function(e) NULL)
-    V <- if (!is.null(se) && length(se) == expected_len) {
-      diag(as.numeric(se)^2)
-    } else {
-      diag(expected_len)
+    if (is.null(coef_names)) {
+      nms <- names(stats::coef(model))
+      coef_names <- nms[!is.na(parse_event_times(nms))]
     }
-    return(list(V = V, is_fallback = TRUE, reason = "did2s",
-                message = "did2s model: event-time VCOV is diag(se^2) by design (sunab-specific matched VCOV does not apply)."))
+    V <- tryCatch(stats::vcov(model), error = function(e) NULL)
+    if (length(coef_names) != expected_len || anyDuplicated(coef_names) ||
+        !is.matrix(V) || !is.numeric(V) ||
+        is.null(rownames(V)) || is.null(colnames(V)) ||
+        anyDuplicated(rownames(V)) || anyDuplicated(colnames(V)) ||
+        !all(coef_names %in% rownames(V)) || !all(coef_names %in% colnames(V))) {
+      stop("did2s covariance cannot be matched to the event-study coefficient names.", call. = FALSE)
+    }
+    V <- V[coef_names, coef_names, drop = FALSE]
+    if (any(!is.finite(V)) || !isSymmetric(unname(V), tol = 1e-8)) {
+      stop("did2s matched event-study covariance must be finite and symmetric.", call. = FALSE)
+    }
+    return(list(V = V, is_fallback = FALSE, reason = NA_character_,
+                message = NA_character_))
   }
 
   if (requireNamespace("HonestDiD", quietly = TRUE)) {
@@ -194,7 +201,7 @@ extract_sunab_vcov <- function(model, expected_len) {
        message = "HonestDiD:::sunab_beta_vcv unavailable or dim-mismatched; sigma is diag(se^2). Overall SE and downstream HonestDiD/pretrends results will ignore off-diagonal covariance.")
 }
 
-# ---- Event-time name parsing ------------------------------------------------
+# ## Event-time name parsing
 # Parses the integer relative-time from estimator-specific coefficient / term
 # names. Handles:
 #   * fixest sunab:  "year::-4", "year::0"                  (anchored after "::")
@@ -235,6 +242,9 @@ trim_event_window <- function(event_time, min_e, max_e) {
 }
 
 envelope <- function(handle_id, overall, event_study, metadata) {
+  if (exists("did_estimator_provenance", mode = "function")) {
+    metadata$packages <- did_estimator_provenance(metadata$estimator)
+  }
   list(
     handle      = handle_id,
     overall     = overall,

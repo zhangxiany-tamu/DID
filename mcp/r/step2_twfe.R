@@ -1,3 +1,10 @@
+# ## Contents
+# - [Severity classification](#severity-classification)
+# - [Helpers](#helpers)
+# - [Bacon decomposition](#bacon-decomposition)
+# - [TwoWayFEWeights](#twowayfeweights)
+# - [Main runner](#main-runner)
+#
 # ============================================================================
 # did-mcp — Step 2: did_diagnose_twfe
 # ============================================================================
@@ -22,8 +29,7 @@
 #     sufficient diagnostic regardless of Bacon availability.
 # ============================================================================
 
-# ---- Severity classification ------------------------------------------------
-
+# ## Severity classification
 classify_severity <- function(pct) {
   if (!is.finite(pct)) return("UNKNOWN")
   if (pct > 50) return("SEVERE")
@@ -47,8 +53,7 @@ twfe_recommendation <- function(severity) {
   )
 }
 
-# ---- Helpers ----------------------------------------------------------------
-
+# ## Helpers
 synthesize_binary_treat <- function(df, treat_var, treat_timing_var, time_var) {
   # Use the user-supplied treat_var ONLY if it was explicitly passed to the
   # tool. We deliberately do NOT fall back to the panel's schema$treat_var:
@@ -61,6 +66,7 @@ synthesize_binary_treat <- function(df, treat_var, treat_timing_var, time_var) {
     return(list(df = df, treat_col = treat_var, synthesized = FALSE))
   }
   g <- suppressWarnings(as.numeric(df[[treat_timing_var]]))
+  g[generated_never_treated_rows(df, treat_timing_var)] <- 0
   t <- suppressWarnings(as.numeric(df[[time_var]]))
   df$.did_twfe_treat <- as.integer(is.finite(g) & g > 0 & t >= g)
   list(df = df, treat_col = ".did_twfe_treat", synthesized = TRUE)
@@ -80,8 +86,7 @@ check_treatment_monotonicity <- function(df, id_var, time_var, treat_col) {
   violations
 }
 
-# ---- Bacon decomposition ----------------------------------------------------
-
+# ## Bacon decomposition
 run_bacon_decomp <- function(df, outcome_var, id_var, time_var, treat_col) {
   if (!requireNamespace("bacondecomp", quietly = TRUE)) {
     stop("did_diagnose_twfe requires `bacondecomp`. Run mcp/r/install_packages.R.",
@@ -122,8 +127,7 @@ run_bacon_decomp <- function(df, outcome_var, id_var, time_var, treat_col) {
   )
 }
 
-# ---- TwoWayFEWeights --------------------------------------------------------
-
+# ## TwoWayFEWeights
 run_twfe_weights <- function(df, outcome_var, id_var, time_var, treat_col,
                              type = "feTR") {
   if (!requireNamespace("TwoWayFEWeights", quietly = TRUE)) {
@@ -165,8 +169,7 @@ run_twfe_weights <- function(df, outcome_var, id_var, time_var, treat_col,
   )
 }
 
-# ---- Main runner ------------------------------------------------------------
-
+# ## Main runner
 run_diagnose_twfe <- function(df, schema, params) {
   id_var           <- schema$id_var
   time_var         <- schema$time_var
