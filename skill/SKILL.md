@@ -13,6 +13,7 @@ metadata:
 ---
 
 ## Contents
+
 - [Progressive Disclosure](#progressive-disclosure)
 - [When To Use This Skill](#when-to-use-this-skill)
 - [Execution Mode: Tools vs. Code-gen](#execution-mode-tools-vs-code-gen)
@@ -39,8 +40,8 @@ Load only what the user needs:
 1. **`SKILL.md`**: Always load first. It provides trigger conditions, routing logic, and the high-level workflow.
 2. **Step guides** (`references/did-step-{1-5}-*.md`): Load the current step's guide as the source of truth for execution details.
 3. **Advanced methods** (`references/did-advanced-methods.md`): Load when treatment is non-binary, reversible, continuous, or otherwise outside the core binary absorbing workflow.
-4. **Package quick starts** (`references/packages/*_quick_start.md`): Load when you need package orientation, key functions, or a compact function map.
-5. **Full package docs** (`references/packages/*.md`) and `*-additional.md`: Load only when argument-level details, implementation caveats, or source-derived behavior matter.
+4. **Package guidance**: Use [the package index](references/package-index.md) to select a quick start. For version-specific arguments, read installed help with `Rscript scripts/package-doc.R PACKAGE TOPIC` from this skill directory; omit `TOPIC` to list available topics.
+5. **Historical package snapshots** (`references/packages/*.md`) and `*-additional.md`: Use for fallback reference and curated caveats. Their versions may differ from the analysis environment; see [package maintenance](PACKAGE_MAINTENANCE.md) for provenance checks.
 6. **Troubleshooting** (`references/did-troubleshooting.md`): Load when installs fail, estimators error, or post-estimation objects are malformed.
 
 Do not load the whole repo by default. Keep context small and step-specific.
@@ -68,9 +69,9 @@ Do not rely on this skill alone for:
 
 This skill has two execution paths. Pick once at the start of the session based on which tools are registered, and stay consistent.
 
-**Tool-aware path (preferred when `did_*` tools are in your tool list).** The companion `did-mcp` server (in the monorepo's `mcp/` directory) exposes the 5-step workflow as agent-callable tools. If you see `did_ping`, `did_load_panel`, `did_estimate`, etc. in your tool list, USE THEM instead of writing R code for the user to paste. The tools return structured JSON, maintain handles across calls (`panel_1`, `estimate_1`, `event_study_1`, …), and let you drive the whole workflow without the user needing an R console open.
+**Tool-aware path (preferred when `did_*` tools are in your tool list).** The companion `did-mcp` server exposes the 5-step workflow as agent-callable tools. If you see `did_ping`, `did_load_panel`, `did_estimate`, etc. in your tool list, USE THEM instead of writing R code for the user to paste. The tools return structured JSON, maintain handles across calls (`panel_1`, `estimate_1`, `event_study_1`, …), and let you drive the whole workflow without the user needing an R console open.
 
-**Code-gen fallback (when tools are absent).** Emit R code blocks that the user runs locally. This is the historical path and every step guide still includes complete, runnable examples. Everything in `references/did-step-*-*.md` works exactly as documented.
+**Code-gen fallback (when tools are absent).** Emit R code blocks that the user runs locally. Every step guide includes reference recipes. When an API differs or an argument is uncertain, check the installed package help before adapting the recipe.
 
 ### Detection
 
@@ -103,7 +104,7 @@ Before Step 1, check whether `did_ping` is available. If the tool call round-tri
 3. **Trust the standardized envelope.** `did_estimate` / `did_compare_estimators` return a consistent `{overall, event_study, metadata, handle}` shape; interpret that rather than parsing raw R objects.
 4. **Always read the `warnings` array on every tool response.** Diagonal-fallback sigma, skipped sub-computations, T/cohort < 3, non-PSD VCOV, and other caveats surface there; propagate them to the user's reading of the result.
 5. **Fall back to code-gen for capabilities the MCP doesn't expose yet.** Not every step guide code block has a tool — e.g., CS compositional diagnostics, wild-cluster bootstrap, and the advanced methods for reversible/continuous treatment. When you need something outside the table above, generate R code from the step guide.
-6. **Prefer `did_extract_event_study` before Step 4 / Step 5.** Both `did_power_analysis` and `did_honest_sensitivity` consume the canonical `event_study` handle; feeding them raw estimate handles is an error.
+6. **Prefer `did_extract_event_study` before Step 4 / Step 5.** Both `did_power_analysis` and `did_honest_sensitivity` consume the canonical `event_study` handle; feeding them raw estimate handles is an error. For `did2s`, extraction retains the full covariance matrix aligned by coefficient names; do not reconstruct it from standard errors alone.
 
 ### Canonical route in tool-aware mode
 
@@ -121,7 +122,7 @@ did_load_panel → did_check_panel → did_profile_design
                                    → did_report  (optional narrative)
 ```
 
-See `mcp/README.md` in the monorepo root for install and wire-up. When the tools don't appear in your tool list, the MCP server is not registered — fall back to code-gen and let the user install it separately if they want the tool-aware path.
+When the tools do not appear in your tool list, use code-gen. MCP registration is managed separately by the client; installed-help lookup remains available without MCP.
 
 ## Start Here
 
@@ -296,7 +297,7 @@ Expected output:
 |---|---|---|
 | `did` | `0` | `gname` cannot stay `NA` |
 | `fixest::sunab()` | `Inf` | `NA` cohorts are silently dropped |
-| `didimputation` | large future value such as `max(t) + 10` | Balanced-panel assumptions matter |
+| `didimputation` | `0` | Normalize known never-treated values before fitting; balanced-panel assumptions matter |
 | `staggered` | `Inf` | Event-time setup must align with not-yet-treated logic |
 | `DIDmultiplegt` / `DIDmultiplegtDYN` | explicit treatment variable | Build the treatment variable from timing only if treatment is actually binary |
 
@@ -319,16 +320,10 @@ When in doubt, open the relevant step guide first and the package quick start se
 
 ### Package quick starts
 
-Open these when you need compact package-specific guidance:
-
-- `references/packages/did_quick_start.md`
-- `references/packages/fixest_quick_start.md`
-- `references/packages/did2s_quick_start.md`
-- `references/packages/didimputation_quick_start.md`
-- `references/packages/staggered_quick_start.md`
-- `references/packages/HonestDiD_quick_start.md`
-- `references/packages/pretrends_quick_start.md`
-- `references/packages/DIDmultiplegt_quick_start.md`
-- `references/packages/DIDmultiplegtDYN_quick_start.md`
+Use [the generated package index](references/package-index.md) for the complete
+inventory and links to quick starts. It is derived from
+`references/package-registry.json`; package updates do not require rewriting a
+function menu. [Package maintenance](PACKAGE_MAINTENANCE.md) explains installed
+help, offline checks, and the distinction between observed and validated versions.
 
 The step guides are the workflow contracts. This file should stay a thin router.

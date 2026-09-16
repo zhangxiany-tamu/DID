@@ -2,7 +2,7 @@
 // ============================================================================
 // did-mcp — MCP audit matrix
 // ============================================================================
-// Diagnose-only audit. For each of the 6 DID Examples datasets, exercise every
+// Validation audit. For each of the 6 DID Examples datasets, exercise every
 // one of the 16 did_* tools and record per-cell PASS/FAIL with:
 //   - tool status + elapsed_ms
 //   - raw warnings from the tool / R worker
@@ -12,7 +12,14 @@
 //   mcp/validation-output/audit-mcp-matrix-<RUN_ID>.md
 //   mcp/validation-output/audit-mcp-matrix-<RUN_ID>.json
 //
+// Writes reports before exiting nonzero for failed or incomplete coverage.
 // Does not modify any MCP or skill code.
+//
+// ## Contents
+// - [MCP client (stdio)](#mcp-client-stdio)
+// - [Benchmarks per dataset](#benchmarks-per-dataset)
+// - [Reporting](#reporting)
+// - [Main](#main)
 
 import { spawn } from "node:child_process";
 import {
@@ -29,6 +36,13 @@ import {
   fmt,
   prepareDidExampleDatasets,
 } from "../../scripts/did-examples-lib.mjs";
+import {
+  AUDIT_ESTIMATORS,
+  auditExitCode,
+  scoreCsBenchmark,
+  scoreEstimators,
+  summarizeAudit,
+} from "../../scripts/audit-results.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = resolve(__dirname, "..");
@@ -490,7 +504,7 @@ async function auditDataset(name, prepared, bench) {
     }
 
     // 9. did_estimate — run all 5 estimators
-    const estimators = ["cs", "sa", "bjs", "did2s", "staggered"];
+    const estimators = AUDIT_ESTIMATORS;
     const estAttempts = [];
     const estResults = {};
     for (const estimator of estimators) {
@@ -529,35 +543,30 @@ async function auditDataset(name, prepared, bench) {
         if (a.ok && a.payload) recordWarnings(c, a.payload);
         if (!a.ok) c.errors.push(`${a.estimator}: ${a.error}`);
       }
-      const okCount = estAttempts.filter((a) => a.ok && isFiniteNum(a.att)).length;
+      const coverage = scoreEstimators(name, estAttempts);
       c.benchmark = {
         attempts: estAttempts.map((a) => ({ estimator: a.estimator, ok: a.ok, att: a.att })),
+        coverage,
       };
-      const detail = estAttempts.map((a) => `${a.estimator}=${a.ok ? fmt(a.att) : "ERR"}`).join("; ");
-      // Bank-deregulation is known-problematic for SA (no never-treated). Allow
-      // SA to fail there without marking the cell FAIL iff other estimators succeed.
-      const expectedFailures = new Set();
-      if (name === "bank-deregulation") expectedFailures.add("sa");
-      const unexpectedFailures = estAttempts.filter((a) => !a.ok && !expectedFailures.has(a.estimator));
-      if (okCount >= 3 && unexpectedFailures.length === 0) pass(c, `${okCount}/5 estimators ok — ${detail}`);
-      else fail(c, `${okCount}/5 estimators ok — ${detail}`);
+      const detail = estAttempts.map((a) => `${a.estimator}=${fmt(a.att)} (${coverage.estimators[a.estimator].status})`).join("; ");
+      if (coverage.status === "PASS") pass(c, `${coverage.passed}/5 estimators ok — ${detail}`);
+      else fail(c, `${coverage.passed}/5 estimators ok — ${detail}`);
 
       // Benchmark check on CS ATT range (per dataset).
       const cs = estResults.cs;
-      if (cs && isFiniteNum(cs.overall?.att)) {
-        const attPass =
-          (bench.csAttRange === null) ||
-          (cs.overall.att >= bench.csAttRange[0] && cs.overall.att <= bench.csAttRange[1]);
-        const ciCovers = cs.overall.ci_lower <= 0 && cs.overall.ci_upper >= 0;
-        const coversOk = bench.csSignCoversZero === null ||
-          bench.csSignCoversZero === ciCovers;
-        if (!attPass || !coversOk) {
-          c.warnings.push({
-            src: "benchmark",
-            message: `CS ATT benchmark miss: ${summarizeEstimate(cs)}; expected range=${JSON.stringify(bench.csAttRange)}, covers_zero_expected=${bench.csSignCoversZero}`,
-          });
-          fail(c, `${detail} — CS benchmark miss: ${summarizeEstimate(cs)}`);
-        }
+      const csBenchmark = scoreCsBenchmark({
+        att: cs?.overall?.att,
+        range: bench.csAttRange,
+        ci: [cs?.overall?.ci_lower, cs?.overall?.ci_upper],
+        coversZero: bench.csSignCoversZero,
+      });
+      c.benchmark.cs = csBenchmark;
+      if (csBenchmark.status === "FAIL") {
+        c.warnings.push({
+          src: "benchmark",
+          message: `${csBenchmark.detail}: ${summarizeEstimate(cs)}; expected range=${JSON.stringify(bench.csAttRange)}, covers_zero_expected=${bench.csSignCoversZero}`,
+        });
+        fail(c, `${detail} — ${csBenchmark.detail}`);
       }
     }
 
@@ -912,7 +921,13 @@ async function main() {
     }
   }
 
-  const md = renderMarkdown(results);
+  const outcome = summarizeAudit({
+    rows: results,
+    datasetNames: EXAMPLE_DATASET_ORDER,
+    cellNames: TOOLS,
+    allowNa: true,
+  });
+  const md = renderMarkdown(results) + `\nOverall audit status: **${outcome.status}**\n`;
   const mdPath = join(OUTPUT_DIR, `audit-mcp-matrix-${RUN_ID}.md`);
   const jsonPath = join(OUTPUT_DIR, `audit-mcp-matrix-${RUN_ID}.json`);
   writeFileSync(mdPath, md);
@@ -922,9 +937,11 @@ async function main() {
     tmp_dir: TMP_DIR,
     benchmarks: BENCHMARKS,
     results,
+    outcome,
   }, null, 2));
   console.log(`\nMarkdown: ${mdPath}`);
   console.log(`JSON:     ${jsonPath}`);
+  process.exitCode = auditExitCode(outcome);
 }
 
 main().catch((e) => {

@@ -1,5 +1,10 @@
 # panelView: Full API Documentation
 
+> **Historical reference snapshot.** The version recorded here belongs to this
+> snapshot and may differ from the installed package or validation ledger. Use
+> [installed help](panelView_quick_start.md#installed-help-topics) for current
+> arguments. This file remains available as a historical fallback.
+
 ## Contents
 - [Package Overview](#package-overview)
 - [panelview()](#panelview)

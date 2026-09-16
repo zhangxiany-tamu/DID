@@ -1,3 +1,7 @@
+# ## Contents
+# - [Checks](#checks)
+# - [Dispatch handler](#dispatch-handler)
+#
 # ============================================================================
 # did-mcp — Step 1: did_check_panel
 # ============================================================================
@@ -7,6 +11,7 @@
 # edit them semantically; re-sync both sides if the skill version changes.
 # ============================================================================
 
+# ## Checks
 check_panel_uniqueness <- function(data, id_var, time_var) {
   dups <- duplicated(data[, c(id_var, time_var)]) |
           duplicated(data[, c(id_var, time_var)], fromLast = TRUE)
@@ -69,6 +74,8 @@ check_panel_balance <- function(data, id_var, time_var) {
 
 check_sentinel_values <- function(data, id_var, time_var, treat_timing_var) {
   g <- data[[treat_timing_var]]
+  sentinel <- attr(data, "did_never_treated_sentinels")[[treat_timing_var]]
+  if (!is.null(sentinel)) g[!is.na(g) & g == sentinel] <- 0
   time_range <- range(data[[time_var]], na.rm = TRUE)
 
   # Get unique gname values (excluding NA, 0, Inf)
@@ -90,9 +97,12 @@ check_sentinel_values <- function(data, id_var, time_var, treat_timing_var) {
 
 check_already_treated <- function(data, id_var, time_var, treat_timing_var) {
   min_time <- min(data[[time_var]], na.rm = TRUE)
+  g <- data[[treat_timing_var]]
+  sentinel <- attr(data, "did_never_treated_sentinels")[[treat_timing_var]]
+  if (!is.null(sentinel)) g[!is.na(g) & g == sentinel] <- 0
 
   # Get one gname per unit
-  unit_g <- tapply(data[[treat_timing_var]], data[[id_var]], function(x) {
+  unit_g <- tapply(g, data[[id_var]], function(x) {
     vals <- unique(x[!is.na(x) & x != 0 & !is.infinite(x)])
     if (length(vals) == 0) return(NA_real_)
     vals[1]
@@ -114,6 +124,8 @@ check_already_treated <- function(data, id_var, time_var, treat_timing_var) {
 check_future_treatment <- function(data, id_var, time_var, treat_timing_var) {
   max_time <- max(data[[time_var]], na.rm = TRUE)
   g <- data[[treat_timing_var]]
+  sentinel <- attr(data, "did_never_treated_sentinels")[[treat_timing_var]]
+  if (!is.null(sentinel)) g[!is.na(g) & g == sentinel] <- 0
 
   # Get one gname per unit (excluding never-treated)
   unit_g <- tapply(g, data[[id_var]], function(x) {
@@ -137,6 +149,7 @@ check_future_treatment <- function(data, id_var, time_var, treat_timing_var) {
 
 # ---- Dispatch handler -------------------------------------------------------
 
+# ## Dispatch handler
 dispatch_check_panel <- function(id, params) {
   run_with_capture(id, function() {
     panel_id <- params$panel_id

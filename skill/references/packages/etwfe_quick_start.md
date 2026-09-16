@@ -1,11 +1,11 @@
 # etwfe: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `etwfe.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived caveats and workflow notes, read `etwfe-additional.md`.
 
 ## Quick Workflow
@@ -19,13 +19,23 @@ Read this file first. It gives a short workflow and a complete function map, the
 - **Repo**: [grantmcdermott/etwfe](https://github.com/grantmcdermott/etwfe)
 - **Key files**: `R/etwfe.R`, `R/emfx.R`, `R/plot.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `etwfe` | Fits Wooldridge-style extended TWFE models | `etwfe.md:57` |
-| `emfx` | Extracts ATT/event-study marginal effects from `etwfe` fits | `etwfe.md:167` |
-| `plot.emfx` | Plot method for `emfx` treatment-effect outputs | `etwfe.md:291` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R etwfe
+Rscript scripts/package-doc.R etwfe etwfe
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [etwfe.md](etwfe.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 
@@ -65,5 +75,5 @@ print(group_effects)
 ## Reading Strategy
 
 - Use this file for rapid estimator selection.
-- Open `etwfe.md` for full argument details and examples.
+- Use installed help for current arguments; `etwfe.md` preserves the historical snapshot.
 - Use source references for FE specification and VCOV behavior checks.

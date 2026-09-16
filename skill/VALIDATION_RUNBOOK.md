@@ -7,6 +7,7 @@
 - [Workflow 3: Event Study to pretrends to HonestDiD](#workflow-3-event-study-to-pretrends-to-honestdid)
 - [Workflow 4: Multilevel Treatment Route](#workflow-4-multilevel-treatment-route)
 - [Workflow 5: Non-Binary or Reversible Treatment Route](#workflow-5-non-binary-or-reversible-treatment-route)
+- [Package maintenance checks](#package-maintenance-checks)
 - [After Each Validation Pass](#after-each-validation-pass)
 
 Use this file to validate the skill through real prompts, not by skimming docs in isolation.
@@ -189,6 +190,40 @@ Use the did-analysis skill on a non-binary or reversible treatment example from 
 - `references/did-step-1-treatment-structure.md`
 - `references/did-advanced-methods.md`
 - `references/did-troubleshooting.md`
+
+## Package maintenance checks
+
+Use Node 22 and the analysis R environment. From the repo root:
+
+```bash
+node scripts/package-maintenance.mjs check
+node scripts/package-maintenance.mjs status --api
+cd mcp
+npm run test:maintenance
+npm run build
+npm test
+npm run smoke:all
+npm run smoke:recycle
+npm run validate:real
+node scripts/audit-mcp-matrix.mjs
+node ../skill/scripts/audit-skill-recipes.mjs
+```
+
+A nonzero status command means inspect the reported drift or failure, not upgrade
+packages automatically. Full API inspection loads installed namespaces. Use
+`did_ping` provenance for an MCP worker's actual R environment. See
+[package maintenance](PACKAGE_MAINTENANCE.md) for library selection and explicit
+baseline refresh.
+
+Both full audits write their reports before failing on missing, incomplete, or
+failed coverage. Every maintained estimator must return a finite ATT; the bank
+panel's explicit SA failure remains a documented design exception. A missing CS
+result cannot bypass benchmark checks. The fallback audit exercises maintained
+R implementations, not every literal Markdown code block.
+
+The portable CI checks the build, unit tests, offline maintenance logic, and
+base-R help fixtures. Heavy audits need the external DID Examples datasets.
+`npm run smoke:all` includes direct-package BJS/covariance contract tests.
 
 ## After Each Validation Pass
 

@@ -1,3 +1,7 @@
+# ## Contents
+# - [Estimation](#estimation)
+# - [Dispatch handler](#dispatch-handler)
+#
 # ============================================================================
 # did-mcp — did_drdid: doubly-robust DiD (DRDID::drdid)
 # ============================================================================
@@ -12,6 +16,7 @@
 # event study — DRDID only produces one ATT per call).
 # ============================================================================
 
+# ## Estimation
 run_drdid <- function(df, schema, params, handle_id) {
   if (!requireNamespace("DRDID", quietly = TRUE)) {
     stop("did_drdid requires the `DRDID` package. Run mcp/r/install_packages.R.",
@@ -32,6 +37,7 @@ run_drdid <- function(df, schema, params, handle_id) {
   dname <- params$treated_var
   if (is.null(dname) || !nzchar(dname) || !dname %in% names(df)) {
     g <- suppressWarnings(as.numeric(df[[schema$treat_timing_var]]))
+    g[generated_never_treated_rows(df, schema$treat_timing_var)] <- 0
     df$.did_drdid_treated <- as.integer(is.finite(g) & g > 0)
     dname <- ".did_drdid_treated"
   }
@@ -135,6 +141,7 @@ run_drdid <- function(df, schema, params, handle_id) {
   )
 }
 
+# ## Dispatch handler
 dispatch_drdid <- function(id, params) {
   run_with_capture(id, function() {
     panel_id  <- params$panel_id

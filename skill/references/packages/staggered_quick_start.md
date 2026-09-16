@@ -1,11 +1,11 @@
 # staggered: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `staggered.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived implementation notes, read `staggered-additional.md`.
 
 ## Quick Workflow
@@ -19,20 +19,23 @@ Read this file first. It gives a short workflow and a complete function map, the
 - **Repo**: [jonathandroth/staggered](https://github.com/jonathandroth/staggered)
 - **Key files**: `R/balance_checks.R`, `R/compute_efficient_estimator_and_se.R`, `R/create_A0_lists.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `balance_checks` | Pre-estimation balance diagnostics for staggered rollout | `staggered.md:62` |
-| `compute_balance_test` | Wald-style balance test helper | `staggered.md:163` |
-| `compute_Betastar` | Plug-in efficient estimator helper | `staggered.md:182` |
-| `compute_g_level_summaries` | Cohort-level summary builder | `staggered.md:206` |
-| `compute_Xhat` | Pre-treatment difference vector builder | `staggered.md:227` |
-| `create_A0_list` | Constructs A0 matrices used by estimators | `staggered.md:248` |
-| `pj_officer_level_balanced` | Included example dataset | `staggered.md:44` |
-| `staggered` | Main Roth-Sant'Anna staggered DID estimator | `staggered.md:304` |
-| `staggered_cs` | Callaway-Sant'Anna-style staggered estimand variant | `staggered.md:407` |
-| `staggered_sa` | Sun-Abraham-style staggered estimand variant | `staggered.md:496` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R staggered
+Rscript scripts/package-doc.R staggered staggered
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [staggered.md](staggered.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 
@@ -85,5 +88,5 @@ ggplot(event_results, aes(x = eventTime, y = estimate)) +
 ## Reading Strategy
 
 - Use this file to select the estimator variant quickly.
-- Open `staggered.md` for complete argument details.
+- Use installed help for current arguments; `staggered.md` preserves the historical snapshot.
 - Use source references for internal matrix/variance debugging.

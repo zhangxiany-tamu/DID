@@ -5,7 +5,7 @@ workflows in R.
 
 This directory is intentionally self-contained. `install.sh` symlinks this
 folder into `~/.claude/skills/did-analysis/`, so `SKILL.md`, `references/`,
-maintainer docs, and package docs must all remain inside `skill/`.
+optional R helpers, maintainer docs, and package docs remain inside `skill/`.
 
 ## Execution Modes
 
@@ -17,5 +17,26 @@ maintainer docs, and package docs must all remain inside `skill/`.
   code only for capabilities outside the tool surface.
 
 The skill does not call MCP directly; the MCP client exposes the tools. See
-`SKILL.md` for routing rules and `../mcp/README.md` for MCP setup when this
-directory is used from the monorepo checkout.
+`SKILL.md` for routing rules. MCP setup instructions ship with the companion
+server in the monorepo.
+
+## Installed Package Help
+
+The authored guides explain method choice and interpretation. Optional helpers
+read package documentation matching your R environment. From this directory:
+
+```bash
+Rscript scripts/package-doc.R did
+Rscript scripts/package-doc.R did att_gt
+Rscript scripts/package-status.R
+```
+
+Help lookup needs only base R and the package's installed help. It reports the
+version, library path, and recorded Git SHA without loading the package or
+running examples. Add `--lib /path/to/R/library` to select a library explicitly.
+Package status requires `jsonlite`; `--api` additionally loads installed package
+namespaces to inspect relevant signatures.
+
+See the [package index](references/package-index.md) for the supported inventory
+and [package maintenance](PACKAGE_MAINTENANCE.md) for the update process. Existing
+full manuals are historical snapshots, retained for fallback reference.

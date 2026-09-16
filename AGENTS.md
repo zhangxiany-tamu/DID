@@ -3,9 +3,9 @@
 This is a monorepo for modern Difference-in-Differences workflows in R. It has
 three coordinated parts:
 
-- `skill/` — the installable `did-analysis` skill. It is pure markdown and
-  contains the runtime router, workflow guides, package docs, and maintainer
-  docs needed by the skill.
+- `skill/` — the installable `did-analysis` skill. It contains Markdown guidance and
+  optional R helpers for installed package help/API inspection, plus the package
+  registry, runtime router, and maintainer docs needed by the skill.
 - `mcp/` — the optional companion `did-mcp` server. It exposes the skill's
   core workflow as agent-callable tools backed by a TypeScript MCP server and a
   persistent R subprocess.
@@ -22,7 +22,7 @@ three coordinated parts:
 - [Repo Map](#repo-map)
 - [Maintainer Read Order](#maintainer-read-order)
 - [Editing Rules](#editing-rules)
-- [Current State (2026-05-21)](#current-state-2026-05-21)
+- [Current State (2026-09-15)](#current-state-2026-09-15)
 
 ## What This Repo Is
 
@@ -74,6 +74,11 @@ three coordinated parts:
 - Keep `skill/` self-contained: every path referenced by `skill/SKILL.md` must
   exist under `skill/` after `install.sh` symlinks it.
 - Keep `skill/SKILL.md` as a router, not a second full manual.
+- Edit package membership in `skill/references/package-registry.json`; run
+  `node scripts/package-maintenance.mjs sync` and `check` to keep the package index
+  and workflow inventory synchronized. Use installed help for API details.
+- The observed API baseline is separate from validation evidence. Refresh it
+  explicitly; update the version ledger only after workflow checks pass.
 - Put new workflow detail in the relevant step guide, not back into
   `skill/SKILL.md`.
 - Keep the MCP tool names in `mcp/src/server.ts` synchronized with the tool map
@@ -93,9 +98,16 @@ three coordinated parts:
 - Prefer built-in package datasets or standard package examples in docs and
   validation notes.
 
-## Current State (2026-05-21)
+## Current State (2026-09-15)
 
 ### Completed
+
+- One package registry drives the installer and generated index/workflow inventory.
+- Installed-help lookup replaces line-number menus. Offline API comparison keeps
+  observed baselines separate from validated versions.
+- BJS uses zero-coded never-treated units; did2s preserves matched full covariance.
+- Audit failures now produce nonzero exit status; portable maintenance/orchestration
+  checks and CI supplement the full local validation.
 
 - `skill/` is the installable skill root and contains its `references/` docs.
 - `SKILL.md` routes between tool-aware MCP execution and code-generation
@@ -104,7 +116,7 @@ three coordinated parts:
   Step 1 loading/checking/profiling/recode/rollout, Step 2 TWFE diagnostics,
   Step 3 estimators/comparison/event-study extraction, Step 4 power analysis,
   Step 5 HonestDiD sensitivity, plus plotting, DRDID, and narrative reports.
-- The 2026-05-21 validation pass succeeded for Node 22 build/tests/smokes,
+- The 2026-09-15 validation pass succeeded for Node 22 build/tests/smokes,
   forced worker recycling, six real-data MCP scenarios, the 16-tool x 6-dataset
   MCP matrix, and the skill R fallback recipe audit.
 - `panelView`, `did2s`, `didimputation`, `staggered`, `DRDID`,

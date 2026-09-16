@@ -2,6 +2,18 @@
 
 This file is the working queue for improving the skill without turning it into a larger platform.
 
+## Contents
+
+- [Current Goal](#current-goal)
+- [Read Order](#read-order)
+- [P0 Priorities](#p0-priorities)
+- [P1 Priorities](#p1-priorities)
+- [Current Known Gaps](#current-known-gaps)
+- [Validation Results (2026-09-15)](#validation-results-2026-09-15)
+- [Validation Results (2026-05-21)](#validation-results-2026-05-21)
+- [Validation Queue](#validation-queue)
+- [Maintenance Rules](#maintenance-rules)
+
 ## Current Goal
 
 Keep `did-analysis` trustworthy by defending the P0 workflows with repeatable MCP and skill-fallback validation.
@@ -33,10 +45,51 @@ Keep `did-analysis` trustworthy by defending the P0 workflows with repeatable MC
 
 ## Current Known Gaps
 
+- Historical manuals remain labeled fallbacks. Retire them only after compact
+  offline references preserve the needed coverage and upstream attribution.
+- The fallback audit tests maintained R implementations, not every literal
+  Markdown snippet. The standalone-help and Step 1 usage checks supplement it.
+- Upstream polling and persistent documentation caching are intentionally deferred;
+  ordinary analysis compares the local environment with recorded observations.
+
 - The real-data validation uses an aggregated Medicaid mortality panel; a full county-outcome/state-treatment multilevel workflow remains a separate documentation-level check.
 - `etwfe`, `gsynth`, `synthdid`, and `YatchewTest` are installed locally but remain outside the defended P0 audit path.
 - DCDH-family package quick examples pass with `polars`, but the advanced-method workflows remain code-generation only rather than MCP tools.
 - HonestDiD open-endpoint CI warnings still appear on some real examples and should remain visible in reports.
+
+## Validation Results (2026-09-15)
+
+- Node 22.18.0 build and all 15 MCP unit tests passed; 42 audit/maintenance/workflow
+  tests passed with no skips. The eight workflow tests use mocked agents and
+  validate routing, package-report propagation, and output schemas.
+- Base-R help fixtures passed, including aliases, two libraries, damaged help,
+  and no example/namespace/Rd-expression execution. All 17 documented packages
+  resolved locally; a copied standalone skill worked in a directory with spaces.
+- All smoke suites and forced worker recycling passed. BJS matches direct package
+  calls with zero coding; did2s covariance matches the fitted model by name and
+  remains aligned after trimming. Its full-covariance power/HonestDiD smoke passed.
+- All six real-data scenarios, 96/96 MCP tool/dataset cells, and 30/30 fallback
+  step/dataset cells passed. All five estimators succeeded on each dataset; no
+  bank/SA exception was needed. Audit process exit status now fails on incomplete
+  or failed coverage, including missing/nonfinite CS benchmarks and failed R runs.
+- One registry now drives installation and generated inventories. Offline status
+  tracks 22 packages and 27 relevant functions; all required packages are present,
+  and observed installed versions match the prior ledger. No packages were upgraded.
+- BJS uses zero for never-treated units; legacy finite recoding remains recoverable
+  within MCP/RDS handles. did2s now retains full covariance, so affected inference
+  should be rerun. Package inspection records actual R/library/version/SHA data.
+- Installer dry runs, generated consistency, documentation links/Contents, skill
+  validation, and diff whitespace checks passed. Portable CI is added; its remote
+  run is tracked on the release-candidate PR. The full dynamic workflow host was not run live.
+
+Reports remain in ignored `mcp/validation-output/` and `skill/validation-output/`:
+`real-datasets-2026-09-16T02-48-00-813Z`,
+`audit-mcp-matrix-2026-09-16T02-50-33-580Z`, and
+`audit-skill-recipes-2026-09-16T02-54-58-025Z` (JSON/Markdown).
+
+The implementation plan and Fable review record are in the repository's
+`docs/maintenance/`; the self-contained operational guide is
+[PACKAGE_MAINTENANCE.md](PACKAGE_MAINTENANCE.md).
 
 ## Validation Results (2026-05-21)
 

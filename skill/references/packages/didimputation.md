@@ -1,5 +1,10 @@
 ## Package 'didimputation'
 
+> **Historical reference snapshot.** The version recorded here belongs to this
+> snapshot and may differ from the installed package or validation ledger. Use
+> [installed help](didimputation_quick_start.md#installed-help-topics) for current
+> arguments. This file remains available as a historical fallback.
+
 July 22, 2025
 Type Package
 Title Imputation Estimator from Borusyak, Jaravel, and Spiess (2021)

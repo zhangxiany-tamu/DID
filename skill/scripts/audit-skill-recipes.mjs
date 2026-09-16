@@ -13,6 +13,11 @@
 //
 // This tests the code-gen fallback path of the skill — the R recipes
 // documented in skill/references/did-step-{1..5}-*.md — independent of MCP.
+//
+// ## Contents
+// - [Scoring](#scoring)
+// - [Reporting](#reporting)
+// - [Main](#main)
 
 import { spawnSync } from "node:child_process";
 import {
@@ -25,9 +30,17 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DEFAULT_EXAMPLES_DIR,
+  EXAMPLE_DATASET_ORDER,
   fmt,
   prepareSkillRecipeDatasets,
 } from "../../scripts/did-examples-lib.mjs";
+import {
+  AUDIT_ESTIMATORS,
+  auditExitCode,
+  scoreCsBenchmark,
+  scoreEstimators,
+  summarizeAudit,
+} from "../../scripts/audit-results.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = resolve(__dirname, "..");
@@ -47,6 +60,8 @@ const BENCH = {
   "sentencing-laws":    { att_range: [-0.5, 0.1], null_ok: true, sign: "negative-or-null" },
   "bank-deregulation":  { att_range: null, null_ok: true, sign: "either" },
 };
+
+// ## Scoring
 
 function scoreStep1(r) {
   const s = r?.step1;
@@ -73,37 +88,34 @@ function scoreStep2(r) {
   return { status: ok ? "PASS" : "FAIL", detail };
 }
 
-function scoreStep3(r, bench) {
+function scoreStep3(r, bench, dataset) {
   const s = r?.step3;
-  if (!s) return { status: "FAIL", detail: "no step3", atts: {} };
   const atts = {};
   const details = [];
-  for (const est of ["cs", "sa", "bjs", "did2s", "staggered"]) {
-    const e = s[est];
+  const attempts = [];
+  for (const est of AUDIT_ESTIMATORS) {
+    const e = s?.[est];
     const ok = e?.ok === true;
     let att = NaN;
     if (ok) {
-      const v = e.value;
+      const v = e.value || {};
       att = (est === "cs") ? v.att_dynamic :
             (est === "sa") ? v.att_dynamic :
             v.att;
     }
     atts[est] = att;
+    // Omit absent attempts so the dataset-specific exception cannot hide them.
+    if (e) attempts.push({ estimator: est, ok, att, error: e.error });
     details.push(`${est}=${ok ? fmt(att) : `ERR(${e?.error?.slice(0, 80) ?? "n/a"})`}`);
   }
-  const okCount = Object.values(atts).filter((v) => Number.isFinite(v)).length;
-  // Benchmark check on CS
-  const csAtt = atts.cs;
-  let benchDetail = "";
-  let benchOk = true;
-  if (Number.isFinite(csAtt) && bench.att_range) {
-    benchOk = csAtt >= bench.att_range[0] && csAtt <= bench.att_range[1];
-    benchDetail = `bench=${benchOk ? "ok" : "MISS"}(exp ${JSON.stringify(bench.att_range)})`;
-  }
+  const coverage = scoreEstimators(dataset, attempts);
+  const benchmark = scoreCsBenchmark({ att: atts.cs, range: bench.att_range });
   return {
-    status: okCount >= 3 && benchOk ? "PASS" : "FAIL",
-    detail: `${okCount}/5 estimators ok — ${details.join("; ")} ${benchDetail}`,
+    status: coverage.status === "PASS" && benchmark.status === "PASS" ? "PASS" : "FAIL",
+    detail: `${coverage.passed}/5 estimators ok — ${details.join("; ")}; ${benchmark.detail}`,
     atts,
+    coverage,
+    benchmark,
   };
 }
 
@@ -129,6 +141,8 @@ function scoreStep5(r) {
   return { status: ok ? "PASS" : "FAIL", detail: `n_pre=${v?.n_pre}, n_post=${v?.n_post}, robust_rows=${nRows}, breakdown_M=${bd ?? "NA"}` };
 }
 
+// ## Reporting
+
 function renderMarkdown(configs, results) {
   const lines = [];
   lines.push("# did-analysis skill — 5-step R Fallback Recipe Audit");
@@ -153,7 +167,7 @@ function renderMarkdown(configs, results) {
     const bench = BENCH[cfg.name];
     const s1 = scoreStep1(r);
     const s2 = scoreStep2(r);
-    const s3 = scoreStep3(r, bench);
+    const s3 = scoreStep3(r, bench, cfg.name);
     const s4 = scoreStep4(r);
     const s5 = scoreStep5(r);
     scored[cfg.name] = { s1, s2, s3, s4, s5 };
@@ -196,6 +210,8 @@ function renderMarkdown(configs, results) {
   return { md: lines.join("\n") + "\n", scored };
 }
 
+// ## Main
+
 function main() {
   if (!existsSync(EXAMPLES_DIR)) throw new Error(`examples dir missing: ${EXAMPLES_DIR}`);
   if (!existsSync(R_SCRIPT)) throw new Error(`R script missing: ${R_SCRIPT}`);
@@ -209,27 +225,43 @@ function main() {
 
   const outputJson = join(TMP_DIR, "recipes-output.json");
   console.log(`Running Rscript...`);
-  const proc = spawnSync("Rscript", [R_SCRIPT, configPath, outputJson], {
+  const proc = spawnSync(process.env.R_PATH || "Rscript", [R_SCRIPT, configPath, outputJson], {
     stdio: ["ignore", "inherit", "inherit"],
     timeout: 30 * 60 * 1000,
   });
-  if (proc.status !== 0) {
-    console.error(`Rscript failed with status ${proc.status}`);
+  const executionErrors = [];
+  if (proc.error || proc.signal || proc.status !== 0) {
+    const detail = `Rscript failed: ${proc.error?.message || proc.signal || `exit status ${proc.status}`}`;
+    executionErrors.push(detail);
+    console.error(detail);
     // Still attempt to read partial output if it exists.
   }
 
   let raw = {};
   if (existsSync(outputJson)) {
-    raw = JSON.parse(readFileSync(outputJson, "utf8"));
+    try {
+      raw = JSON.parse(readFileSync(outputJson, "utf8"));
+    } catch (error) {
+      executionErrors.push(`Cannot read R output: ${error.message}`);
+    }
   } else {
-    console.error(`R produced no output at ${outputJson}; reporting all-FAIL.`);
+    const detail = `R produced no output at ${outputJson}; reporting all-FAIL.`;
+    executionErrors.push(detail);
+    console.error(detail);
   }
-  const results = raw.results || {};
+  const results = raw?.results || {};
   const { md, scored } = renderMarkdown(configs, results);
+  const outcome = summarizeAudit({
+    rows: Object.entries(scored).map(([name, cells]) => ({ name, cells })),
+    datasetNames: EXAMPLE_DATASET_ORDER,
+    cellNames: ["s1", "s2", "s3", "s4", "s5"],
+    executionErrors,
+  });
 
   const mdPath = join(OUTPUT_DIR, `audit-skill-recipes-${RUN_ID}.md`);
   const jsonPath = join(OUTPUT_DIR, `audit-skill-recipes-${RUN_ID}.json`);
-  writeFileSync(mdPath, md);
+  writeFileSync(mdPath, md + `\nOverall audit status: **${outcome.status}**\n` +
+    executionErrors.map((detail) => `- ${detail}\n`).join(""));
   writeFileSync(jsonPath, JSON.stringify({
     generated_at: new Date().toISOString(),
     examples_dir: EXAMPLES_DIR,
@@ -237,9 +269,11 @@ function main() {
     configs,
     r_results: results,
     scored,
+    outcome,
   }, null, 2));
   console.log(`\nMarkdown: ${mdPath}`);
   console.log(`JSON:     ${jsonPath}`);
+  process.exitCode = auditExitCode(outcome);
 }
 
 main();

@@ -1,11 +1,11 @@
 # TwoWayFEWeights: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `TwoWayFEWeights.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived caveats and internal pipeline notes, read `TwoWayFEWeights-additional.md`.
 
 ## Quick Workflow
@@ -20,12 +20,23 @@ Read this file first. It gives a short workflow and a complete function map, the
 - **Repo**: [Credible-Answers/twowayfeweights](https://github.com/Credible-Answers/twowayfeweights)
 - **Key files**: `R/TwoWayFEWeights.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `print.twowayfeweights` | Print method for TWFE weights objects | `TwoWayFEWeights.md:36` |
-| `twowayfeweights` | Computes de Chaisemartin-D'Haultfoeuille weights for TWFE regressions | `TwoWayFEWeights.md:96` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R TwoWayFEWeights
+Rscript scripts/package-doc.R TwoWayFEWeights twowayfeweights
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [TwoWayFEWeights.md](TwoWayFEWeights.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 
@@ -73,5 +84,5 @@ if (weights_result$nr_minus > 0) {
 ## Reading Strategy
 
 - Use this file to select `type` and diagnostics workflow.
-- Read `TwoWayFEWeights.md` for full argument details.
+- Use installed help for current arguments; `TwoWayFEWeights.md` preserves the historical snapshot.
 - Use source file references when debugging edge-case input handling.

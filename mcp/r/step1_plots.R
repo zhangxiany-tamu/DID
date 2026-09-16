@@ -1,3 +1,6 @@
+# ## Contents
+# - [Dispatch handler](#dispatch-handler)
+#
 # ============================================================================
 # did-mcp — Step 1: did_plot_rollout
 # ============================================================================
@@ -31,6 +34,7 @@ plot_outcome_trajectories <- function(df, id_col, time_col, treat_col, outcome_c
 
 # ---- Dispatch handler -------------------------------------------------------
 
+# ## Dispatch handler
 dispatch_plot_rollout <- function(id, params) {
   # Upstream panelView still uses deprecated ggplot2 APIs (size→linewidth,
   # element_rect size=, bare margin(t=...) length, unused position="identity").
@@ -77,6 +81,7 @@ dispatch_plot_rollout <- function(id, params) {
     # Derive a binary treatment indicator from timing (skill line 534 recipe)
     # Coerce g to numeric so the comparison works whether it's stored as int/num.
     g <- suppressWarnings(as.numeric(df[[treat_timing_var]]))
+    g[generated_never_treated_rows(df, treat_timing_var)] <- 0
     t_col <- suppressWarnings(as.numeric(df[[time_var]]))
     df$.did_treat <- ifelse(!is.na(g) & g > 0 & t_col >= g, 1L, 0L)
     treat_col <- ".did_treat"

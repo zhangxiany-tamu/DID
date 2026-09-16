@@ -15,9 +15,11 @@
     "smoke:estimators": "node scripts/smoke-estimators.mjs",
     "smoke:edge": "node scripts/smoke-edgecases.mjs",
     "smoke:recycle": "node scripts/smoke-recycle.mjs",
-    "smoke:all": "npm run smoke && npm run smoke:estimators && npm run smoke:edge",
+    "smoke:all": "npm run test:contracts && npm run smoke && npm run smoke:estimators && npm run smoke:edge",
     "validate:real": "node scripts/validate-real-examples.mjs",
     "test": "vitest run",
+    "test:contracts": "Rscript scripts/test-estimator-contracts.R",
+    "test:maintenance": "node --test ../scripts/audit-results.test.mjs ../scripts/package-maintenance.test.mjs ../workflow/did-analysis.test.mjs && node ../scripts/package-maintenance.mjs check && Rscript ../skill/scripts/tests/package-doc.test.R",
     "test:watch": "vitest"
   },
   "dependencies": {

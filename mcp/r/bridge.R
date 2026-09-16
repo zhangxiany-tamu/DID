@@ -1,3 +1,10 @@
+# ## Contents
+# - [Initialization](#initialization)
+# - [Response helpers](#response-helpers)
+# - [Dispatch](#dispatch)
+# - [Main loop](#main-loop)
+#
+# ## Initialization
 # ============================================================================
 # did-mcp — R Bridge
 # ============================================================================
@@ -43,6 +50,7 @@ if (!nzchar(BRIDGE_DIR)) {
   }
 }
 
+source(file.path(BRIDGE_DIR, "package_provenance.R"))
 source(file.path(BRIDGE_DIR, "object_store.R"))
 source(file.path(BRIDGE_DIR, "step1_load_panel.R"))
 source(file.path(BRIDGE_DIR, "step1_checks.R"))
@@ -62,7 +70,7 @@ source(file.path(BRIDGE_DIR, "step6_plot.R"))
 source(file.path(BRIDGE_DIR, "step6_drdid.R"))
 source(file.path(BRIDGE_DIR, "step6_report.R"))
 
-# ---- Response Helpers -------------------------------------------------------
+# ## Response helpers
 
 send_response <- function(resp) {
   tryCatch({
@@ -155,7 +163,7 @@ run_with_capture <- function(id, body_fn, warning_filter = NULL) {
   )
 }
 
-# ---- Dispatch ---------------------------------------------------------------
+# ## Dispatch
 
 dispatch <- function(req) {
   id <- req$id %||% -1L
@@ -202,6 +210,7 @@ dispatch_ping <- function(id, params) {
       pong = TRUE,
       r_version = paste(R.version$major, R.version$minor, sep = "."),
       r_platform = R.version$platform,
+      package_provenance = did_runtime_provenance(),
       jsonlite_version = as.character(packageVersion("jsonlite")),
       echo = echo,
       bridge_pid = Sys.getpid()
@@ -316,7 +325,7 @@ dispatch_drop_object <- function(id, params) {
   list(id = id, result = list(handle = handle, freed = isTRUE(freed)))
 }
 
-# ---- Main Loop --------------------------------------------------------------
+# ## Main loop
 
 # Emit the ready sentinel so RWorker.ts knows sourcing finished and the main
 # loop is about to accept stdin. id=0 is reserved for this handshake; tools

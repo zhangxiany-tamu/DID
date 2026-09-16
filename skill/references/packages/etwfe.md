@@ -1,5 +1,10 @@
 # etwfe: Extended Two-Way Fixed Effects
 
+> **Historical reference snapshot.** The version recorded here belongs to this
+> snapshot and may differ from the installed package or validation ledger. Use
+> [installed help](etwfe_quick_start.md#installed-help-topics) for current
+> arguments. This file remains available as a historical fallback.
+
 ## Contents
 - [Package Overview](#package-overview)
 - [Installation](#installation)

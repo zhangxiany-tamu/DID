@@ -1,3 +1,10 @@
+# ## Contents
+# - [Helper: drop rows with unusable SE](#helper-drop-rows-with-unusable-se)
+# - [CS: aggte(mp, type="dynamic")](#cs-aggtemp-typedynamic)
+# - [fixest: sunab (SA) or did2s](#fixest-sunab-sa-or-did2s)
+# - [BJS: as.data.frame(res) has term/estimate/std.error](#bjs-asdataframeres-has-termestimatestderror)
+# - [Roth-Sant'Anna: eventstudy slot](#roth-santanna-eventstudy-slot)
+#
 # ============================================================================
 # did-mcp — Step 3 event-study extractors
 # ============================================================================
@@ -11,7 +18,6 @@
 # MUST treat that as "ignore off-diagonal covariance." `fallback_reason`
 # explains WHY the fallback happened:
 #   "se_only"                   — estimator never exposes a full VCOV
-#   "did2s"                     — fixest model is a did2s, sunab VCOV N/A
 #   "sunab_beta_vcv_unavailable"— HonestDiD helper absent / dim-mismatched
 #   NA                          — sigma is the real VCOV, no fallback
 #
@@ -29,7 +35,7 @@ extract_event_study.default <- function(obj, ...) {
                paste(class(obj), collapse = "/")), call. = FALSE)
 }
 
-# ---- Helper: drop rows with unusable SE -------------------------------------
+# ## Helper: drop rows with unusable SE
 # Returns list(betahat, tVec, se, dropped_tVec). If all rows are dropped, stops
 # with a clear error — there is no meaningful event study to surface.
 
@@ -50,11 +56,12 @@ drop_missing_se_rows <- function(tVec, betahat, se, context) {
     tVec    = tVec[keep],
     betahat = betahat[keep],
     se      = se[keep],
+    keep    = keep,
     dropped = tVec[!keep]
   )
 }
 
-# ---- CS: aggte(mp, type="dynamic") ------------------------------------------
+# ## CS: aggte(mp, type="dynamic")
 # Exposes att.egt, se.egt, and egt. V.analytical is present in current `did`
 # versions; if absent, we fall back to diag(se^2) and flag accordingly.
 
@@ -90,13 +97,11 @@ extract_event_study.MP <- function(obj, ...) {
   )
 }
 
-# ---- fixest: sunab (SA) or did2s --------------------------------------------
-
+# ## fixest: sunab (SA) or did2s
 extract_event_study.fixest <- function(obj, ...) {
   # coef names carry the event time ("year::-4" for sunab, ".did2s_rel::-4"
-  # for did2s). The shared extract_sunab_vcov() decides whether a matched
-  # event-time VCOV is available (sunab) or whether diag(se^2) is the right
-  # answer (did2s, or sunab with HonestDiD missing).
+  # for did2s). The shared helper matches did2s covariance by coefficient
+  # names and uses the sunab-specific helper for SA.
   coefs <- stats::coef(obj)
   nms <- names(coefs)
   tVec_all <- parse_event_times(nms)
@@ -104,24 +109,23 @@ extract_event_study.fixest <- function(obj, ...) {
   coefs <- coefs[keep]
   tVec <- tVec_all[keep]
 
-  vcov_info <- extract_sunab_vcov(obj, length(coefs))
+  vcov_info <- extract_sunab_vcov(obj, length(coefs), nms[keep])
   if (isTRUE(vcov_info$is_fallback) &&
       identical(vcov_info$reason, "sunab_beta_vcv_unavailable")) {
     warning(sprintf("extract_event_study.fixest: %s", vcov_info$message),
             call. = FALSE)
   }
 
-  # If the helper returned a diagonal (did2s or missing HonestDiD), screen
-  # missing/zero SEs the same way we do for CS/BJS/staggered.
+  # Screen unusable variances without discarding covariance among kept rows.
   sigma <- vcov_info$V
   betahat <- as.numeric(coefs)
-  if (isTRUE(vcov_info$is_fallback)) {
-    se <- sqrt(diag(sigma))
+  if (isTRUE(vcov_info$is_fallback) || is_did2s_fixest_model(obj)) {
+    se <- suppressWarnings(sqrt(diag(sigma)))
     cleaned <- drop_missing_se_rows(tVec, betahat, se,
                                     "extract_event_study.fixest")
     tVec    <- cleaned$tVec
     betahat <- cleaned$betahat
-    sigma   <- diag(cleaned$se ^ 2, nrow = length(cleaned$se))
+    sigma   <- sigma[cleaned$keep, cleaned$keep, drop = FALSE]
   }
 
   list(
@@ -131,8 +135,7 @@ extract_event_study.fixest <- function(obj, ...) {
   )
 }
 
-# ---- BJS: as.data.frame(res) has term/estimate/std.error --------------------
-
+# ## BJS: as.data.frame(res) has term/estimate/std.error
 extract_event_study.did_imputation_result <- function(obj, ...) {
   dfr <- as.data.frame(obj)
   term <- as.character(dfr$term)
@@ -153,8 +156,7 @@ extract_event_study.did_imputation_result <- function(obj, ...) {
   )
 }
 
-# ---- Roth-Sant'Anna: eventstudy slot ----------------------------------------
-
+# ## Roth-Sant'Anna: eventstudy slot
 extract_event_study.staggered_combined <- function(obj, ...) {
   es <- obj$eventstudy
   if (is.null(es)) {

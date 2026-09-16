@@ -1,11 +1,11 @@
 # YatchewTest: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `YatchewTest.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived implementation insights, read `YatchewTest-additional.md`.
 
 ## Quick Workflow
@@ -19,12 +19,23 @@ Read this file first. It gives a short workflow and a complete function map, the
 - **Repo**: [Credible-Answers/yatchew_test](https://github.com/Credible-Answers/yatchew_test)
 - **Key files**: `R/yatchew_test.R`, `R/nearest_neighbor_sort.R`, `R/path_plot.R`, `R/print.R`
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `yatchew_test` | Tests linearity of treatment-response relationship using Yatchew's method | `YatchewTest.md:46` |
-| `yatchew_test.data.frame` | Data.frame method for Yatchew linearity test | `YatchewTest.md:28` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R YatchewTest
+Rscript scripts/package-doc.R YatchewTest yatchew_test
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [YatchewTest.md](YatchewTest.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 ## Common Use Case Example
 

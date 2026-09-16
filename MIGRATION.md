@@ -12,6 +12,26 @@ Layout evolution:
 
 Skill content between `skill-v1.1.0-flat` and `v2.0.0` was relocated, not modified. After `v2.0.0` the skill's `references/` guides received targeted fixes (notably `print(panelview(...))` and the Sun-Abraham label parser) alongside the MCP build-out.
 
+## Unreleased package maintenance update
+
+Existing skill and MCP install paths and tool names are unchanged. Keep the whole
+`skill/` directory when copying it: `scripts/package-doc.R`, `package-status.R`,
+and the registry support installed-version documentation and provenance. The
+[maintenance guide](skill/PACKAGE_MAINTENANCE.md) explains the new commands.
+
+Routine workflows now inspect installed packages offline in one task. The
+`skipPackageCheck` argument remains available. The `implementation.json`
+`packageScan` record now contains `environmentChanges`, `upstreamChecked: false`,
+and `checks`; consumers should stop reading `updatesAvailable` and `docsDrifting`.
+
+BJS now normalizes known never-treated units to zero. Generated legacy finite
+sentinels are recovered within MCP/RDS handles (the R helper now requires
+`time_var` when creating a finite sentinel); CSV exports lose this metadata,
+so explicitly restore never-treated identity before re-importing them. did2s
+now preserves its matched full covariance matrix, which can change power and
+sensitivity results. Re-run affected analyses rather than comparing old and new
+inference as though they used the same covariance approximation.
+
 ## If you cloned directly into `.claude/skills/did-analysis/`
 
 Old install:
@@ -53,7 +73,7 @@ The GitHub URL `DID-skills` auto-redirects to `DID` (GitHub handles renames tran
 
 ## Why the restructure
 
-To add the `did-mcp` server alongside the skill without polluting the skill's install path or complicating downstream workflows. The skill remains pure markdown and still installs via a single symlink. The MCP is opt-in.
+To add the `did-mcp` server alongside the skill without polluting the skill's install path or complicating downstream workflows. The skill contains Markdown guidance and optional R helpers, and still installs via a single symlink. The MCP is opt-in.
 
 ## Tag reference
 

@@ -33,7 +33,7 @@ When `did-mcp` is registered, run estimators via the three Step 3 tools instead 
 |---|---|---|
 | Run one of five estimators | `did_estimate` with `estimator` ∈ {`cs`, `sa`, `bjs`, `did2s`, `staggered`} | `cs` → CS (`did::att_gt` + `aggte`), `sa` → SA (`fixest::feols` + `sunab`), `bjs` → BJS (`didimputation::did_imputation`, requires balanced panel), `did2s` → Gardner (`did2s::did2s`), `staggered` → Roth-Sant'Anna (`staggered::staggered`). |
 | Run several and compare | `did_compare_estimators` with an `estimators` array | Returns per-estimator envelopes + a wide comparison table keyed on `event_time`. |
-| Pull a canonical event study | `did_extract_event_study` on any `estimate_N` handle | Returns `{betahat, sigma, tVec, sigma_is_diagonal_fallback, fallback_reason}`. Only SA produces a matched event-time VCOV (via `HonestDiD:::sunab_beta_vcv`); every other estimator sets `sigma_is_diagonal_fallback=true` with `reason="se_only"` or `reason="did2s"`. Always check that flag before downstream inference. |
+| Pull a canonical event study | `did_extract_event_study` on any `estimate_N` handle | Returns `{betahat, sigma, tVec, sigma_is_diagonal_fallback, fallback_reason}`. SA uses a matched event-time VCOV via `HonestDiD:::sunab_beta_vcv`; did2s preserves its full `vcov()` matrix matched by coefficient names. Other paths may use diagonal fallback with `reason="se_only"`. Always check that flag before downstream inference. |
 
 **Covariates**: pass `xformla_vars: string[]` (e.g. `["lpop", "educ"]`); each wrapper converts to the right native syntax. **Clustering**: pass `cluster_var`; defaults to the panel's id_var. **Event window**: `min_e` / `max_e` restrict both the event-study output and any internal aggregation.
 
@@ -47,7 +47,7 @@ The R recipes in the rest of this guide remain the authoritative reference and a
 |---------|----------|----------|-------|---------------|------------------|
 | `did` | `att_gt()` + `aggte()` | Callaway-Sant'Anna | Moderate | Not-yet or never | gname = 0 for never-treated |
 | `fixest` | `feols()` + `sunab()` | Sun-Abraham | Very fast | Never or last cohort | Inf for never-treated (NA drops rows) |
-| `didimputation` | `did_imputation()` | Borusyak-Jaravel-Spiess | Moderate | Not-yet-treated | Balanced panel; data.table; gname = max(t)+10 |
+| `didimputation` | `did_imputation()` | Borusyak-Jaravel-Spiess | Moderate | Not-yet-treated | Balanced panel; data.table; gname = 0 for never-treated |
 | `did2s` | `did2s()` | Gardner two-stage | Fast | Not-yet-treated | Binary `treat` indicator |
 | `staggered` | `staggered()` | Roth-Sant'Anna | Moderate | Not-yet-treated | gname = Inf for never-treated |
 
@@ -275,13 +275,19 @@ install.packages("didimputation")
 BJS is the most demanding estimator for data preparation. It requires:
 1. A **balanced panel** (all units observed at all times)
 2. Data in **data.table** format
-3. Never-treated coded as `gname = max(time) + 10` (not 0, NA, or Inf)
+3. Never-treated coded as `gname = 0` (the package also documents NA); finite future sentinels create artificial event times
 4. Specific column types: idname as integer, tname as integer, gname as numeric, yname as numeric
 
 ```r
 library(data.table)
 
 prepare_bjs_data <- function(df, yname, tname, idname, gname) {
+  # Recover only finite sentinels recorded by the Step 1 helper.
+  sentinel <- attr(df, "did_never_treated_sentinels")[[gname]]
+  if (!is.null(sentinel)) {
+    g <- df[[gname]]
+    df[[gname]][!is.na(g) & g == sentinel] <- 0
+  }
   # 1. Create balanced grid
   unique_ids   <- sort(unique(df[[idname]]))
   unique_times <- sort(unique(df[[tname]]))
@@ -296,9 +302,10 @@ prepare_bjs_data <- function(df, yname, tname, idname, gname) {
   # 3. Convert to data.table (required by didimputation)
   dt <- data.table::as.data.table(merged)
 
-  # 4. Set never-treated gname to max(time) + 10
-  max_t <- max(dt[[tname]], na.rm = TRUE)
-  dt[[gname]][dt[[gname]] == 0 | is.na(dt[[gname]])] <- max_t + 10
+  # 4. Use the documented never-treated convention
+  g <- dt[[gname]]
+  g[is.na(g) | g == 0 | is.infinite(g)] <- 0
+  dt[[gname]] <- g
 
   # 5. Coerce column types (all required)
   dt[[idname]] <- as.integer(dt[[idname]])
@@ -770,12 +777,12 @@ Estimator failed or unreliable?
 
 ## Common Pitfalls
 
-1. **Forgetting to recode never-treated**: Each estimator has a different convention (0, NA, Inf, max+10)
+1. **Forgetting to recode never-treated**: Each estimator has a different convention (0, NA, Inf)
 2. **Unbalanced panels with BJS**: `didimputation` will fail silently or give wrong results
 3. **Missing treatment indicator for Gardner**: `did2s` needs an explicit 0/1 `treat` column
 4. **Wrong clustering**: Always cluster at the treatment assignment level
 5. **Confusing `gname` with `treat`**: `gname` is the timing variable (when treatment starts); `treat` is a 0/1 indicator for whether the unit-time is treated
-6. **Large never-treated gname for BJS**: Must be `max(time) + 10` (not 0, Inf, or NA)
+6. **Finite never-treated gname for BJS**: Normalize known never-treated units to zero. A finite future sentinel creates artificial event times, even when it lies beyond the observed sample.
 7. **Small/singleton cohorts with SA**: Cohorts with < 5 units cause non-PSD VCOV, zero SEs, and collinearity drops. Check cohort sizes before running SA.
 8. **Non-PSD VCOV from fixest**: Downstream HonestDiD/pretrends require valid covariance. If fixest "fixes" the VCOV, results are unreliable. Merge cohorts or switch to CS.
 9. **Unrestricted event windows with early adopters**: Default event studies include all leads/lags, producing 30+ period plots dominated by noise. Restrict windows to where data is dense.

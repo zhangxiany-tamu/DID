@@ -17,12 +17,23 @@ end-to-end and writes an audience-tailored report you can read, plus a machine-r
 > built to reduce — not eliminate — the usual failure modes (wrong never-treated coding, TWFE
 > bias ignored, implausible magnitudes, malformed outputs the report then cites).
 
+## Contents
+
+- [What it does](#what-it-does)
+- [Execution path](#execution-path)
+- [Install](#install)
+- [Invoke](#invoke)
+- [Outputs](#outputs)
+- [Agent topology](#agent-topology)
+- [Customization](#customization)
+
 ## What it does
 
-1. **Package scan (report-only).** One agent per tracked R package checks CRAN/GitHub for a newer
-   version *and* diffs the upstream function map / signatures / NEWS against this repo's
-   [`skill/references/packages/*.md`](../skill/references/packages), reporting exactly what changed
-   and which docs would need refreshing. It changes no files and installs nothing.
+1. **Package environment (offline, report-only).** One agent checks the actual MCP worker or
+   fallback R environment against the observed API baseline and last-validated versions.
+   It reports installed versions and source revisions, flags missing required packages,
+   and treats missing optional packages as informational. Upstream releases are not checked;
+   no files or packages are changed. Exact installed help is available when an argument is needed.
 2. **The 5-step procedure, each step triple-reviewed.** A step's executor runs the method, then
    three independent reviewers run in parallel — **statistical** (correctness, assumptions,
    inference), **economic** (sign/magnitude plausibility, mechanism, applied sense), and
@@ -62,8 +73,7 @@ ln -sfn "$(pwd)/workflow/did-analysis.ts" ~/.claude/workflows/did-analysis.ts
 The repo's [`install.sh`](../install.sh) does this for you. After linking, it is invocable as
 `/did-analysis` (it appears in `/` autocomplete).
 
-**Requirements:** R 4.x with the P0 packages (`Rscript mcp/r/install_packages.R`), and web access
-for the package scan. The MCP server is optional — without it, agents use the R fallback.
+**Requirements:** R 4.x with the required packages (`Rscript mcp/r/install_packages.R`). The MCP server is optional — without it, agents use the R fallback.
 
 ## Invoke
 
@@ -97,7 +107,7 @@ infer the column mapping (and flag it back so a wrong guess is catchable).
 | `audience` | `"economists"` | `economists` \| `statisticians` \| `general` \| `applied`. Pass an **array** to emit one report variant per audience. |
 | `outputDir` | `"analyses"` | Base dir; a per-run `<slug>/` subfolder is minted under it. |
 | `path` | `"auto"` | Force the execution path: `auto` \| `mcp` \| `rfallback`. |
-| `skipPackageCheck` | `false` | Skip the CRAN/GitHub scan. |
+| `skipPackageCheck` | `false` | Skip the local package environment report. |
 | `maxStepReviewRounds` | `2` | Cap on per-step executor⇄reviewer revision rounds. |
 | `maxReportReviewRounds` | `2` | Cap on report revision rounds. |
 
@@ -105,7 +115,7 @@ infer the column mapping (and flag it back so a wrong guess is catchable).
 
 Written to `analyses/<slug>/`:
 
-- `packages-report.md` — version + doc-drift scan (report-only).
+- `packages-report.md` — installed versions, source revisions, and comparison with the recorded environment.
 - `config.md` — the resolved column mapping and rationale.
 - `01_structure.md` … `05_sensitivity.md` — per-step writeups.
 - `tables/`, `figures/` — every generated CSV and plot.
@@ -120,7 +130,7 @@ Written to `analyses/<slug>/`:
 | Phase | Agents |
 |---|---|
 | Preflight | 1 |
-| Packages | ~17 package-checkers (parallel) + 1 summarizer |
+| Packages | 1 offline environment checker |
 | Configure | 1 |
 | Each of the 5 steps | 1 executor + 3 reviewers (statistical · economic · artifact-QA) per round |
 | Step 3 also | up to 5 estimators run in parallel before the reviewed synthesis |
@@ -129,22 +139,22 @@ Written to `analyses/<slug>/`:
 | Report Review | 2 reviewers (correctness · audience-fit) per round |
 | Compile | one write-agent per output file (parallel) |
 
-A clean single-pass staggered run with no review revisions is ~60 agents; with the default review
-rounds a typical real run lands around **75–85** (each extra step-review round adds 4 agents, each extra
-report-review round adds 3). A workflow run uses meaningfully more tokens than a single conversation —
-watch progress with `/workflows`.
+Agent usage varies with review rounds and audience variants. Each additional step review
+round adds four agents; each report review adds three. Watch progress with `/workflows`.
 
 ## Customization
 
 `did-analysis.ts` is a single self-contained file (plain JavaScript despite the `.ts` extension):
 
 - `AUDIENCE_PROFILE` — add or edit an audience's tone/structure guidance.
-- `PACKAGES` — the package set the scan covers.
+- [`package-registry.json`](../skill/references/package-registry.json) — the editable package inventory.
+  Run `node scripts/package-maintenance.mjs sync` at the repo root to regenerate the embedded
+  `PACKAGES` constant and package index. `check` fails if either generated copy is stale.
 - `runReviewedStep` and the per-step `criteria` — what each reviewer scrutinizes; tighten or loosen
   the bar there.
 - `maxStepReviewRounds` / `maxReportReviewRounds` / the `*_BUDGET_FLOOR` constants — loop depth and
   when to stop on a low token budget.
 - `STEP_GUIDE` — the skill guides the executors and reviewers read.
 
-Per-step dependencies are sequential `await`; independent work (package checks, estimators, the
+Per-step dependencies are sequential `await`; independent work (estimators, the
 three reviewers, file writes) uses `parallel()`.

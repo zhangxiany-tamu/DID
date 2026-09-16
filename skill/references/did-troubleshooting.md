@@ -282,13 +282,13 @@ if (any(obs_per_unit != n_periods)) {
 
 ### Never-treated coding issues
 
-BJS requires never-treated units to have `gname = max(time) + 10`. Using `0`, `NA`, or `Inf` causes silent miscoding.
+Use zero for BJS never-treated units; the package also documents NA. A finite future value creates artificial event times and can mark never-treated units as treated if the sample extends past that value. Normalize only units known to be never-treated; do not guess from an arbitrary future cohort.
 
 **Fix**:
 ```r
-max_t <- max(dt[[tname]], na.rm = TRUE)
-dt$first_treat[is.na(dt$first_treat) | dt$first_treat == 0] <- max_t + 10
-dt$first_treat[is.infinite(dt$first_treat)] <- max_t + 10
+g <- dt$first_treat
+g[is.na(g) | g == 0 | is.infinite(g)] <- 0
+dt$first_treat <- g
 ```
 
 ### "Pretrends not found in event_time"
@@ -298,8 +298,9 @@ dt$first_treat[is.infinite(dt$first_treat)] <- max_t + 10
 **Fix**: Check available event times before specifying pretrends:
 ```r
 # Check what relative times exist
-dt$rel_time <- dt$year - dt$first_treat
-table(dt$rel_time[dt$first_treat < max_t + 10])
+ever_treated <- !is.na(dt$first_treat) & is.finite(dt$first_treat) & dt$first_treat > 0
+dt$rel_time <- ifelse(ever_treated, dt$year - dt$first_treat, -Inf)
+table(dt$rel_time[ever_treated])
 
 # Use only periods that exist
 bjs_es <- did_imputation(..., horizon = TRUE, pretrends = -3:-1)  # adjust range to match data
@@ -439,8 +440,8 @@ results <- createSensitivityResults_relativeMagnitudes(
 # Fix 2: Restrict to near pre-periods (reduces max violation baseline)
 # See "Pre-Period Selection for HonestDiD" in did-step-5-sensitivity-inference.md
 
-# Fix 3: Use SA or BJS for full VCOV instead of CS diagonal approximation
-# Full VCOV matrices are better conditioned for the optimizer
+# Fix 3: Use SA or did2s with its full, matched event-study covariance
+# Full covariance preserves cross-period dependence; still check conditioning
 
 # Fix 4: Regularize sigma (add small diagonal perturbation)
 sigma_reg <- sigma_sub + diag(1e-6, nrow(sigma_sub))

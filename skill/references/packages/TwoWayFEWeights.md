@@ -1,5 +1,10 @@
 ## Package 'TwoWayFEWeights'
 
+> **Historical reference snapshot.** The version recorded here belongs to this
+> snapshot and may differ from the installed package or validation ledger. Use
+> [installed help](TwoWayFEWeights_quick_start.md#installed-help-topics) for current
+> arguments. This file remains available as a historical fallback.
+
 July 22, 2025
 Type Package
 Title Estimation of the Weights Attached to the Two-Way Fixed Effects

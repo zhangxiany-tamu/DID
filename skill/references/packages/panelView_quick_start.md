@@ -1,11 +1,11 @@
 # panelView: Quick Start
 
-Read this file first. It gives a short workflow and a complete function map, then points to full docs and source files.
+Read this file first for the workflow and examples. Use installed help for version-specific arguments and available topics.
 
 ## How To Use This File
 
 - Start here for package orientation and function selection.
-- For full arguments/examples, open `panelView.md` at the referenced line.
+- For current arguments and package examples, use [installed help](#installed-help-topics).
 - For repository-derived implementation and testing notes, read `panelView-additional.md`.
 
 ## Quick Workflow
@@ -22,11 +22,23 @@ Read this file first. It gives a short workflow and a complete function map, the
 - **Key files**: `R/panelview.R`
 - **Documentation site**: [yiqingxu.org/packages/panelView/](https://yiqingxu.org/packages/panelView/)
 
-## Complete Function Map
+## Installed Help Topics
 
-| Function | What It Does | Details In Full Manual |
-|---|---|---|
-| `panelview` | Visualize panel data: treatment status, outcomes, or missingness | `panelView.md:25` |
+From the installed skill directory (the `skill/` directory in this repository):
+
+```bash
+Rscript scripts/package-doc.R panelView
+Rscript scripts/package-doc.R panelView panelview
+```
+
+The first command lists help topics and aliases from your installed version.
+The second reads one topic with its version, library path, and recorded Git SHA.
+Use `--lib /path/to/R/library` to select a library explicitly.
+
+If R or the package is unavailable, [panelView.md](panelView.md) remains a historical
+reference snapshot; its version may differ from the analysis environment.
+See the [package index](../package-index.md) for the supported inventory and
+[package maintenance guide](../../PACKAGE_MAINTENANCE.md) for version checks.
 
 **Note**: The function name is lowercase (`panelview`) while the package name is uppercase (`panelView`).
 
@@ -73,5 +85,5 @@ panelview(lemp ~ treat, data = mpdta,
 ## Reading Strategy
 
 - Start with `panelview(type = "treat")` to understand the treatment design.
-- Open `panelView.md` for full argument details (display options, subsetting, themes).
+- Use installed help for current arguments; `panelView.md` preserves the historical snapshot.
 - Use repo vignettes for publication-ready plot customization.

@@ -1,7 +1,12 @@
 #!/usr/bin/env node
+// ## Contents
+// - [Setup](#setup)
+// - [Workflow checks](#workflow-checks)
+//
 // Smoke test: drive the MCP server via stdio and exercise the full Step 1
 // workflow end-to-end. Exits 0 on success, 1 on failure.
 
+// ## Setup
 import { spawn } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,6 +71,7 @@ function send(method, params) {
   });
 }
 
+// ## Workflow checks
 (async () => {
   try {
     // MCP handshake
@@ -105,6 +111,12 @@ function send(method, params) {
       throw new Error("echo mismatch");
     if (!pingPayload.bridge.r_version)
       throw new Error("missing r_version in ping response");
+    const provenance = pingPayload.bridge.package_provenance;
+    if (provenance?.kind !== "observed_environment" || !provenance.rHome || !provenance.libraryPaths?.length)
+      throw new Error("missing worker package provenance");
+    const jsonlite = provenance.packages?.find(p => p.name === "jsonlite");
+    if (!jsonlite?.installed || jsonlite.version !== pingPayload.bridge.jsonlite_version || !jsonlite.path)
+      throw new Error("package provenance does not match worker jsonlite");
 
     // Call did_session status
     const sessRes = await send("tools/call", {

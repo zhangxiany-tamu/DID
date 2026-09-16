@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {"name":"did","priority":"P0","install":"required","source":"cran","repo":"bcallaway11/did","docs":true,"role":"Group-time ATT","estimators":["cs"],"functions":["att_gt","aggte","ggdid"]},
+    {"name":"fixest","priority":"P0","install":"required","source":"cran","repo":"lrberge/fixest","docs":true,"role":"Sun-Abraham event study","estimators":["sa"],"functions":["feols","sunab","se","iplot"]},
+    {"name":"did2s","priority":"P0","install":"required","source":"cran","repo":"kylebutts/did2s","docs":true,"role":"Two-stage DiD","estimators":["did2s"],"functions":["did2s"]},
+    {"name":"didimputation","priority":"P0","install":"required","source":"cran","repo":"kylebutts/didimputation","docs":true,"role":"BJS imputation","estimators":["bjs"],"functions":["did_imputation"]},
+    {"name":"staggered","priority":"P0","install":"required","source":"cran","repo":"jonathandroth/staggered","docs":true,"role":"Random-timing comparison","estimators":["staggered"],"functions":["staggered"]},
+    {"name":"bacondecomp","priority":"P0","install":"required","source":"cran","docs":true,"role":"TWFE decomposition","estimators":[],"functions":["bacon"]},
+    {"name":"TwoWayFEWeights","priority":"P0","install":"required","source":"cran","docs":true,"role":"TWFE weight diagnostics","estimators":[],"functions":["twowayfeweights"]},
+    {"name":"HonestDiD","priority":"P0","install":"required","source":"cran","repo":"asheshrambachan/HonestDiD","docs":true,"role":"Sensitivity analysis","estimators":[],"functions":["constructOriginalCS","createSensitivityResults","createSensitivityResults_relativeMagnitudes"],"internalFunctions":["sunab_beta_vcv"]},
+    {"name":"pretrends","priority":"P0","install":"required","source":"github","repo":"jonathandroth/pretrends","docs":true,"role":"Pre-trend power","estimators":[],"functions":["pretrends","slope_for_power"]},
+    {"name":"panelView","priority":"P0","install":"required","source":"cran","docs":true,"role":"Treatment rollout","estimators":[],"functions":["panelview"]},
+    {"name":"DRDID","priority":"P1","install":"optional","source":"cran","docs":true,"role":"Covariate-aware DiD","estimators":["drdid"],"functions":["drdid"]},
+    {"name":"etwfe","priority":"P1","install":"optional","source":"cran","docs":true,"role":"Extended TWFE","estimators":[],"functions":["etwfe","emfx"]},
+    {"name":"DIDmultiplegt","priority":"P1","install":"optional","source":"cran","docs":true,"role":"Reversible treatment","estimators":[],"functions":["did_multiplegt"]},
+    {"name":"DIDmultiplegtDYN","priority":"P1","install":"optional","source":"cran","docs":true,"role":"Dynamic heterogeneous treatment","estimators":[],"functions":["did_multiplegt_dyn"]},
+    {"name":"gsynth","priority":"P1","install":"optional","source":"cran","docs":true,"role":"Generalized synthetic control","estimators":[],"functions":["gsynth"]},
+    {"name":"synthdid","priority":"P1","install":"optional","source":"github","repo":"synth-inference/synthdid","docs":true,"role":"Synthetic DiD","estimators":[],"functions":["synthdid_estimate"]},
+    {"name":"YatchewTest","priority":"P2","install":"manual","source":"cran","docs":true,"role":"Functional-form testing","estimators":[],"functions":["yatchew_test"]},
+    {"name":"jsonlite","priority":null,"install":"required","source":"cran","docs":false,"role":"MCP and metadata JSON","estimators":[],"functions":[]},
+    {"name":"data.table","priority":null,"install":"required","source":"cran","docs":false,"role":"Estimator data preparation","estimators":[],"functions":[]},
+    {"name":"ggplot2","priority":null,"install":"required","source":"cran","docs":false,"role":"Plots","estimators":[],"functions":[]},
+    {"name":"arrow","priority":null,"install":"manual","source":"cran","docs":false,"role":"Optional Parquet input","estimators":[],"functions":[]},
+    {"name":"polars","priority":null,"install":"manual","source":"r-universe","repository":"https://rpolars.r-universe.dev","docs":false,"role":"DCDH installation support","estimators":[],"functions":[]}
+  ]
+}
